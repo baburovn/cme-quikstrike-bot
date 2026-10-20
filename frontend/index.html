@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>CME Group Metals Terminal & QuikStrike</title>
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- TradingView Lightweight Charts (Hosted locally) -->
+  <script src="/static/lightweight-charts.js"></script>
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-badge">CME</div>
+        <div>
+          <h1 class="app-title">CME Group Metals</h1>
+          <p class="app-subtitle">Chicago Mercantile Exchange</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="connectionStatus" class="status-pill connected">
+          <span class="pulse-dot"></span>
+          <span class="status-text">LIVE 10s</span>
+        </div>
+        <div id="cmeClock" class="clock-display">--:--:--</div>
+      </div>
+    </header>
+
+    <!-- Top Primary Navigation Switcher -->
+    <nav class="main-nav">
+      <button class="nav-tab active" data-nav="quikstrike">🎯 QuikStrike: Most Actives OI</button>
+      <button class="nav-tab" data-nav="futures">📊 Фьючерсы & Графики</button>
+    </nav>
+
+    <!-- PAGE 1: FUTURES & CHARTS -->
+    <div id="pageFutures" class="page-content">
+      <!-- Main Active Instrument Section -->
+      <section class="chart-section">
+        <div class="chart-header">
+          <div class="selected-asset-info">
+            <div class="asset-symbol-row">
+              <span id="chartSymbol" class="badge-symbol">GC</span>
+              <h2 id="chartAssetName" class="asset-name">Gold Futures (Золото 🟡)</h2>
+            </div>
+            <div class="asset-price-row">
+              <span id="chartPrice" class="asset-price">$2,748.50</span>
+              <span id="chartChange" class="price-change positive">+0.45%</span>
+            </div>
+          </div>
+
+          <!-- Mode Switcher: Chart vs Specs vs Calendar -->
+          <div class="view-switch-tabs">
+            <button class="view-tab-btn active" data-view="chart">📈 График</button>
+            <button class="view-tab-btn" data-view="specs">📜 Спецификация</button>
+            <button class="view-tab-btn" data-view="calendar">📅 Экспирации</button>
+          </div>
+        </div>
+
+        <!-- VIEW 1: CHART -->
+        <div id="chartViewWrapper" class="view-panel active">
+          <div class="chart-controls-row">
+            <!-- OHLC Tooltip Bar -->
+            <div id="ohlcBar" class="ohlc-bar">
+              <span>O: <b id="barOpen">-</b></span>
+              <span>H: <b id="barHigh">-</b></span>
+              <span>L: <b id="barLow">-</b></span>
+              <span>C: <b id="barClose">-</b></span>
+              <span>Vol: <b id="barVol">-</b></span>
+            </div>
+            <!-- Timeframe Selectors -->
+            <div class="timeframe-buttons">
+              <button class="tf-btn active" data-tf="5M">5М</button>
+              <button class="tf-btn" data-tf="15M">15М</button>
+              <button class="tf-btn" data-tf="1H">1Ч</button>
+              <button class="tf-btn" data-tf="1D">1Д</button>
+            </div>
+          </div>
+          <div id="chartContainer" class="chart-container"></div>
+        </div>
+
+        <!-- VIEW 2: CONTRACT SPECS -->
+        <div id="specsViewWrapper" class="view-panel">
+          <div class="specs-grid" id="specsGrid"></div>
+        </div>
+
+        <!-- VIEW 3: EXPIRATION CALENDAR -->
+        <div id="calendarViewWrapper" class="view-panel">
+          <div class="calendar-list" id="calendarList"></div>
+        </div>
+      </section>
+
+      <!-- Market Overview / Category Filter -->
+      <section class="instruments-section">
+        <div class="section-top">
+          <h3 class="section-title">Котировки рынка CME</h3>
+          <div class="tabs">
+            <button class="tab-btn active" data-cat="all">Все</button>
+            <button class="tab-btn" data-cat="metals">Металлы</button>
+            <button class="tab-btn" data-cat="currencies">Валюты</button>
+          </div>
+        </div>
+
+        <!-- Cards Grid -->
+        <div id="tickerGrid" class="ticker-grid"></div>
+      </section>
+    </div>
+
+    <!-- PAGE 2: QUIKSTRIKE MOST ACTIVES (OPEN INTEREST PROFILE) -->
+    <div id="pageQuikstrike" class="page-content active">
+      <section class="qs-section">
+        <div class="qs-header">
+          <div>
+            <h2 class="qs-title">Top 25 by Open Interest Change</h2>
+            <p class="qs-subtitle" id="qsSubtitle">CME QuikStrike™ Options Open Interest Profile • Золото (Gold)</p>
+          </div>
+          <div class="qs-dates-badge">
+            <span class="date-tag">СЕН 30</span> ➔ <span class="date-tag current">ОКТ 1</span>
+          </div>
+        </div>
+
+        <!-- Instrument Selector -->
+        <div class="qs-instrument-bar">
+          <span class="filter-label">Инструмент:</span>
+          <div class="instrument-pills">
+            <button class="instrument-pill active" data-qs-symbol="GC">🟡 Gold</button>
+            <button class="instrument-pill" data-qs-symbol="SI">⚪ Silver</button>
+            <button class="instrument-pill" data-qs-symbol="6E">💶 EUR/USD</button>
+            <button class="instrument-pill" data-qs-symbol="6B">💷 GBP/USD</button>
+            <button class="instrument-pill" data-qs-symbol="6A">🇦🇺 AUD/USD</button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="qs-filter-bar">
+          <span class="filter-label">Фильтр по открытому интересу:</span>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-minoi="1000">🔥 Крупные (OI ≥ 1,000)</button>
+            <button class="filter-pill" data-minoi="2000">OI ≥ 2,000</button>
+            <button class="filter-pill" data-minoi="0">Все Top 25</button>
+          </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="qs-stats-bar">
+          <div class="qs-stat-item">
+            <span class="lbl">Отобрано Calls:</span>
+            <b id="callsCount" class="val text-success">14</b>
+          </div>
+          <div class="qs-stat-item">
+            <span class="lbl">Отобрано Puts:</span>
+            <b id="putsCount" class="val text-danger">8</b>
+          </div>
+          <div class="qs-stat-item">
+            <span class="lbl">Макс. приток OI:</span>
+            <b id="maxInflow" class="val text-success">+3 138 (4510 C)</b>
+          </div>
+        </div>
+
+        <!-- Two QuikStrike Tables -->
+        <div class="qs-tables-container">
+          <!-- Calls Table -->
+          <div class="qs-table-card">
+            <div class="qs-table-header calls-header">
+              <span class="table-type">🟢 CALLS</span>
+              <span class="table-sub">Top by OI Change</span>
+            </div>
+            <div class="table-responsive">
+              <table class="qs-table" id="callsTable">
+                <thead>
+                  <tr>
+                    <th class="sortable-th" data-sort="strike" data-table="calls">STRIKE ⇅</th>
+                    <th class="sortable-th" data-sort="exp" data-table="calls">EXP ⇅</th>
+                    <th class="sortable-th" data-sort="vol" data-table="calls">VOL ⇅</th>
+                    <th class="sortable-th" data-sort="prev_oi" data-table="calls">СЕН 30 ⇅</th>
+                    <th class="sortable-th" data-sort="curr_oi" data-table="calls">ОКТ 1 ⇅</th>
+                    <th class="sortable-th" data-sort="chg" data-table="calls">CHG ⇅</th>
+                    <th>CHG CHART</th>
+                  </tr>
+                </thead>
+                <tbody id="callsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Puts Table -->
+          <div class="qs-table-card">
+            <div class="qs-table-header puts-header">
+              <span class="table-type">🔴 PUTS</span>
+              <span class="table-sub">Top by OI Change</span>
+            </div>
+            <div class="table-responsive">
+              <table class="qs-table" id="putsTable">
+                <thead>
+                  <tr>
+                    <th class="sortable-th" data-sort="strike" data-table="puts">STRIKE ⇅</th>
+                    <th class="sortable-th" data-sort="exp" data-table="puts">EXP ⇅</th>
+                    <th class="sortable-th" data-sort="vol" data-table="puts">VOL ⇅</th>
+                    <th class="sortable-th" data-sort="prev_oi" data-table="puts">СЕН 30 ⇅</th>
+                    <th class="sortable-th" data-sort="curr_oi" data-table="puts">ОКТ 1 ⇅</th>
+                    <th class="sortable-th" data-sort="chg" data-table="puts">CHG ⇅</th>
+                    <th>CHG CHART</th>
+                  </tr>
+                </thead>
+                <tbody id="putsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="qs-footer-link">
+          <a href="https://www.cmegroup.com/tools-information/quikstrike/options-open-interest-profile.html?pid=40#cmeloginteaser1" target="_blank" class="cme-link-btn">
+            <span>🔗 Открыть официальный отчет CME QuikStrike</span> ↗
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Market Stats Footer -->
+    <footer class="market-footer">
+      <div class="stat-pill">
+        <span class="label">Статус биржи:</span>
+        <span class="value text-success">ОТКРЫТА (Globex)</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">Обновление:</span>
+        <span id="lastUpdated" class="value">Каждые 10 сек</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

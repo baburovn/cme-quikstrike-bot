@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment and sensitive credentials
+.env
+backend/cme_credentials.py
+backend/channel_config.json
+backend/quikstrike_cache.json
+
+# Local deployment scripts with server credentials
+deploy_remote.py
+sync_specs.py
+check_remote.py
+stop_old_bot.py
+update_frontend.py
+
+# Logs and runtime dumps
+*.log
+*.dump
+*dump*.html
+login_dump.html
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

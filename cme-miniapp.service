@@ -1,0 +1,17 @@
+[Unit]
+Description=CME Metals Telegram Mini App & Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/cme-metals-miniapp/backend
+ExecStart=/opt/cme-metals-miniapp/venv/bin/python run_all.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
