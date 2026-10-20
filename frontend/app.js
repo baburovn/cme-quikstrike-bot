@@ -860,12 +860,51 @@ function buildTableRow(item, maxChg) {
   `;
 }
 
+function formatQsDate(dStr) {
+  if (!dStr) return "";
+  const months = {
+    JAN: "ЯНВ", FEB: "ФЕВ", MAR: "МАР", APR: "АПР", MAY: "МАЙ", JUN: "ИЮН",
+    JUL: "ИЮЛ", AUG: "АВГ", SEP: "СЕН", OCT: "ОКТ", NOV: "НОЯ", DEC: "ДЕК"
+  };
+  let res = String(dStr).toUpperCase().trim();
+  for (const [en, ru] of Object.entries(months)) {
+    res = res.replace(en, ru);
+  }
+  return res;
+}
+
 async function renderQuikstrikeTables(minOi = 1000, symbol = "GC") {
   try {
     const res = await fetch(`/api/options/most-actives?min_oi=${minOi}&symbol=${symbol}`);
     const resData = await res.json();
     if (resData.status === "ok" && resData.data) {
-      const { calls, puts } = resData.data;
+      const { calls, puts, metadata } = resData.data;
+
+      // Dynamically update date tags and table column headers from scraped metadata
+      if (metadata) {
+        const prevText = formatQsDate(metadata.prev_date || "ПРЕД");
+        const currText = formatQsDate(metadata.curr_date || "ТЕК");
+
+        const prevEl = document.getElementById("qsPrevDateTag");
+        const currEl = document.getElementById("qsCurrDateTag");
+        if (prevEl) prevEl.textContent = prevText;
+        if (currEl) currEl.textContent = currText;
+
+        const callsPrevTh = document.getElementById("callsPrevOiTh");
+        const callsCurrTh = document.getElementById("callsCurrOiTh");
+        const putsPrevTh = document.getElementById("putsPrevOiTh");
+        const putsCurrTh = document.getElementById("putsCurrOiTh");
+
+        const callsPrevArrow = (sortState.calls.key === 'prev_oi') ? (sortState.calls.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅';
+        const callsCurrArrow = (sortState.calls.key === 'curr_oi') ? (sortState.calls.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅';
+        const putsPrevArrow = (sortState.puts.key === 'prev_oi') ? (sortState.puts.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅';
+        const putsCurrArrow = (sortState.puts.key === 'curr_oi') ? (sortState.puts.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅';
+
+        if (callsPrevTh) callsPrevTh.textContent = `${prevText}${callsPrevArrow}`;
+        if (callsCurrTh) callsCurrTh.textContent = `${currText}${callsCurrArrow}`;
+        if (putsPrevTh) putsPrevTh.textContent = `${prevText}${putsPrevArrow}`;
+        if (putsCurrTh) putsCurrTh.textContent = `${currText}${putsCurrArrow}`;
+      }
 
       // Store data for sorting
       lastCallsData = calls;

@@ -124,8 +124,8 @@
             <h2 class="qs-title">Top 25 by Open Interest Change</h2>
             <p class="qs-subtitle" id="qsSubtitle">CME QuikStrike™ Options Open Interest Profile • Золото (Gold)</p>
           </div>
-          <div class="qs-dates-badge">
-            <span class="date-tag">СЕН 30</span> ➔ <span class="date-tag current">ОКТ 1</span>
+          <div class="qs-dates-badge" id="qsDatesBadge">
+            <span class="date-tag" id="qsPrevDateTag">ПРЕД</span> ➔ <span class="date-tag current" id="qsCurrDateTag">ТЕК</span>
           </div>
         </div>
 
@@ -182,8 +182,8 @@
                     <th class="sortable-th" data-sort="strike" data-table="calls">STRIKE ⇅</th>
                     <th class="sortable-th" data-sort="exp" data-table="calls">EXP ⇅</th>
                     <th class="sortable-th" data-sort="vol" data-table="calls">VOL ⇅</th>
-                    <th class="sortable-th" data-sort="prev_oi" data-table="calls">СЕН 30 ⇅</th>
-                    <th class="sortable-th" data-sort="curr_oi" data-table="calls">ОКТ 1 ⇅</th>
+                    <th class="sortable-th" data-sort="prev_oi" data-table="calls" id="callsPrevOiTh">ПРЕД. OI ⇅</th>
+                    <th class="sortable-th" data-sort="curr_oi" data-table="calls" id="callsCurrOiTh">ТЕКУЩ. OI ⇅</th>
                     <th class="sortable-th" data-sort="chg" data-table="calls">CHG ⇅</th>
                     <th>CHG CHART</th>
                   </tr>
@@ -206,8 +206,8 @@
                     <th class="sortable-th" data-sort="strike" data-table="puts">STRIKE ⇅</th>
                     <th class="sortable-th" data-sort="exp" data-table="puts">EXP ⇅</th>
                     <th class="sortable-th" data-sort="vol" data-table="puts">VOL ⇅</th>
-                    <th class="sortable-th" data-sort="prev_oi" data-table="puts">СЕН 30 ⇅</th>
-                    <th class="sortable-th" data-sort="curr_oi" data-table="puts">ОКТ 1 ⇅</th>
+                    <th class="sortable-th" data-sort="prev_oi" data-table="puts" id="putsPrevOiTh">ПРЕД. OI ⇅</th>
+                    <th class="sortable-th" data-sort="curr_oi" data-table="puts" id="putsCurrOiTh">ТЕКУЩ. OI ⇅</th>
                     <th class="sortable-th" data-sort="chg" data-table="puts">CHG ⇅</th>
                     <th>CHG CHART</th>
                   </tr>
