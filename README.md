@@ -107,7 +107,7 @@ cp backend/cme_credentials.example.py backend/cme_credentials.py
 
 Отредактируйте `.env`:
 ```env
-BOT_TOKEN=8946982524:AAHA5rD3UNpwTydZ2hNJsP_VuW7-rpKsHSQ
+BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 WEBAPP_URL=https://your-domain.com
 API_HOST=0.0.0.0
 API_PORT=8080
