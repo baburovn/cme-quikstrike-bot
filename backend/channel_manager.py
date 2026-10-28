@@ -8,9 +8,9 @@ from typing import Optional, Dict, Any, Tuple
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import config
+from bot_keyboards import get_channel_inline_keyboard
 from cme_fetcher import format_channel_report_message
 
 logger = logging.getLogger("cme-channel-manager")
@@ -99,26 +99,6 @@ async def trigger_cme_scraper() -> Tuple[bool, str]:
 def is_channel_configured() -> bool:
     cfg = get_channel_config()
     return bool(cfg.get("channel_id"))
-
-
-def get_channel_inline_keyboard() -> InlineKeyboardMarkup:
-    """Buttons attached to the channel report."""
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🚀 Открыть QuikStrike Терминал (Mini App)",
-                    url=config.WEBAPP_URL
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔄 Обновить отчет",
-                    callback_data="refresh_channel_report"
-                )
-            ]
-        ]
-    )
 
 
 async def send_report_to_channel(bot: Bot) -> Tuple[bool, str]:

@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+CME Metals & FX Telegram Mini App Bot.
+Handles commands, callbacks, automated reporting, and Mini App entry points.
+"""
 import asyncio
 import logging
 import sys
@@ -8,16 +13,18 @@ from aiogram.types import (
     BotCommand,
     CallbackQuery,
     ChatMemberUpdated,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    KeyboardButton,
     Message,
-    ReplyKeyboardMarkup,
-    WebAppInfo,
     MenuButtonWebApp,
+    WebAppInfo,
 )
 
 import config
+from bot_keyboards import (
+    get_miniapp_reply_keyboard,
+    get_miniapp_inline_keyboard,
+    get_oi_inline_keyboard,
+    get_channel_inline_keyboard,
+)
 from cme_fetcher import (
     get_all_quotes,
     format_quikstrike_telegram_message,
@@ -29,9 +36,9 @@ from channel_manager import (
     is_channel_configured,
     send_report_to_channel,
     start_channel_scheduler,
-    get_channel_inline_keyboard,
     trigger_cme_scraper,
 )
+from credentials_manager import save_cme_credentials
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -45,54 +52,8 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
-    """Returns persistent Telegram Reply Keyboard with Mini App and QuikStrike buttons."""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [
-                KeyboardButton(
-                    text="📈 Открыть Терминал CME 🟡⚪",
-                    web_app=WebAppInfo(url=config.WEBAPP_URL)
-                )
-            ],
-            [
-                KeyboardButton(text="🎯 Most Actives OI (≥1000)"),
-                KeyboardButton(text="📊 Котировки"),
-            ],
-            [
-                KeyboardButton(text="📢 Отправить Топ-5 в канал"),
-                KeyboardButton(text="ℹ️ О терминале"),
-            ]
-        ],
-        resize_keyboard=True
-    )
-
-
-def get_miniapp_inline_keyboard() -> InlineKeyboardMarkup:
-    """Returns Inline Keyboard to launch Mini App with charts and channel buttons."""
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🚀 Запустить CME Mini App (Графики Live)",
-                    web_app=WebAppInfo(url=config.WEBAPP_URL)
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔄 Обновить текст",
-                    callback_data="refresh_text_quotes"
-                ),
-                InlineKeyboardButton(
-                    text="📢 В канал",
-                    callback_data="publish_to_channel"
-                )
-            ]
-        ]
-    )
-
-
 def format_text_quotes() -> str:
+    """Formats live quotes into a compact Telegram message."""
     quotes = get_all_quotes()
     lines = [
         "📊 **CME GROUP — МЕТАЛЛЫ И ВАЛЮТЫ**",
@@ -111,6 +72,10 @@ def format_text_quotes() -> str:
     lines.append("💡 *Для интерактивных графиков TradingView нажмите кнопку ниже:*")
     return "\n".join(lines)
 
+
+# =====================================================================
+# Navigation & Mini App Launch Handlers
+# =====================================================================
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, bot: Bot):
@@ -141,6 +106,10 @@ async def cmd_open_app(message: Message):
     )
 
 
+# =====================================================================
+# Market Quotes Handlers
+# =====================================================================
+
 @router.message(Command("quotes"))
 @router.message(Command("metals"))
 @router.message(F.text == "📊 Котировки")
@@ -153,6 +122,10 @@ async def cmd_text_quotes(message: Message):
     )
 
 
+# =====================================================================
+# QuikStrike Most Actives OI Handlers
+# =====================================================================
+
 @router.message(Command("oi"))
 @router.message(Command("mostactive"))
 @router.message(Command("options"))
@@ -160,47 +133,25 @@ async def cmd_text_quotes(message: Message):
 @router.message(F.text.lower().contains("most active") | F.text.lower().contains("открытый интерес") | F.text.lower().contains("quikstrike"))
 async def cmd_quikstrike_oi(message: Message):
     text = format_quikstrike_telegram_message(min_oi=1000)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🎯 Открыть QuikStrike Most Actives в Mini App",
-                    web_app=WebAppInfo(url=f"{config.WEBAPP_URL}#most-actives")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔄 Обновить данные",
-                    callback_data="refresh_oi_data"
-                )
-            ]
-        ]
+    await message.answer(
+        text,
+        reply_markup=get_oi_inline_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
     )
-    await message.answer(text, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 
 @router.callback_query(F.data == "refresh_oi_data")
 async def cb_refresh_oi(query: CallbackQuery):
     await query.answer("Данные QuikStrike обновлены!")
     text = format_quikstrike_telegram_message(min_oi=1000)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🎯 Открыть QuikStrike Most Actives в Mini App",
-                    web_app=WebAppInfo(url=f"{config.WEBAPP_URL}#most-actives")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔄 Обновить данные",
-                    callback_data="refresh_oi_data"
-                )
-            ]
-        ]
-    )
     try:
-        await query.message.edit_text(text, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+        await query.message.edit_text(
+            text,
+            reply_markup=get_oi_inline_keyboard(),
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
     except Exception:
         pass
 
@@ -217,7 +168,7 @@ async def cb_refresh_text(query: CallbackQuery, bot: Bot):
     except Exception:
         pass
 
-    # When user clicks "Обновить текст", if channel is configured, also push/update to channel
+    # When user clicks "Обновить текст", if channel is configured, also push update
     if is_channel_configured():
         try:
             await send_report_to_channel(bot)
@@ -247,6 +198,10 @@ async def cb_refresh_channel_report(query: CallbackQuery):
     except Exception:
         pass
 
+
+# =====================================================================
+# Channel & Group Integration Handlers
+# =====================================================================
 
 @router.my_chat_member()
 async def on_my_chat_member(event: ChatMemberUpdated, bot: Bot):
@@ -358,6 +313,10 @@ async def cmd_channel_status(message: Message):
     )
 
 
+# =====================================================================
+# Scraper & Credentials Administrative Handlers
+# =====================================================================
+
 @router.message(Command("update_oi"))
 @router.message(Command("scrape"))
 async def cmd_update_oi(message: Message, bot: Bot):
@@ -393,22 +352,8 @@ async def cmd_set_cme(message: Message):
     new_login = parts[1].strip()
     new_password = parts[2].strip()
 
-    cred_file = Path(__file__).resolve().parent / "cme_credentials.py"
-    try:
-        content = (
-            "# =====================================================================\n"
-            "# CME GROUP / QUIKSTRIKE УЧЕТНЫЕ ДАННЫЕ\n"
-            "# Здесь вы можете менять логин и пароль от аккаунта CME Group.\n"
-            "# =====================================================================\n\n"
-            f'CME_LOGIN = "{new_login}"\n'
-            f'CME_PASSWORD = "{new_password}"\n'
-        )
-        with open(cred_file, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        config.CME_LOGIN = new_login
-        config.CME_PASSWORD = new_password
-
+    success, err_msg = save_cme_credentials(new_login, new_password)
+    if success:
         await message.answer(
             f"✅ **Учетные данные CME успешно обновлены!**\n\n"
             f"• Логин: `{new_login}`\n"
@@ -416,8 +361,8 @@ async def cmd_set_cme(message: Message):
             "Теперь парсер будет использовать эти данные.",
             parse_mode=ParseMode.MARKDOWN
         )
-    except Exception as e:
-        await message.answer(f"❌ Ошибка сохранения данных: {e}", parse_mode=ParseMode.MARKDOWN)
+    else:
+        await message.answer(f"❌ {err_msg}", parse_mode=ParseMode.MARKDOWN)
 
 
 @router.message(Command("info"))
@@ -435,6 +380,10 @@ async def cmd_info(message: Message):
     )
     await message.answer(info_text, parse_mode=ParseMode.MARKDOWN)
 
+
+# =====================================================================
+# Main Application Loop
+# =====================================================================
 
 async def main():
     bot = Bot(token=config.BOT_TOKEN)
