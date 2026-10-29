@@ -200,10 +200,17 @@ def get_live_quikstrike_dataset() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return QUIKSTRIKE_DATA, QUIKSTRIKE_METADATA
 
 
-def get_quikstrike_most_actives(min_oi: int = 1000, symbol: str = "GC") -> Dict[str, Any]:
+def get_default_min_oi(symbol: str) -> int:
+    """Returns default OI threshold: 500 for Silver (SI), 1000 for Gold and FX."""
+    return 500 if symbol.upper() == "SI" else 1000
+
+
+def get_quikstrike_most_actives(min_oi: Optional[int] = None, symbol: str = "GC") -> Dict[str, Any]:
     """Filters Top 25 Most Actives by OI threshold. Supports: GC, SI, 6E, 6B, 6A."""
     all_data, all_meta = get_live_quikstrike_dataset()
     sym = symbol.upper()
+    if min_oi is None:
+        min_oi = get_default_min_oi(sym)
     data = all_data.get(sym, all_data.get("GC", {}))
     meta = all_meta.get(sym, all_meta.get("GC", {}))
     all_calls = data.get("calls", [])
@@ -223,8 +230,10 @@ def get_quikstrike_most_actives(min_oi: int = 1000, symbol: str = "GC") -> Dict[
     }
 
 
-def format_quikstrike_telegram_message(min_oi: int = 1000, symbol: str = "GC") -> str:
+def format_quikstrike_telegram_message(min_oi: Optional[int] = None, symbol: str = "GC") -> str:
     """Formats QuikStrike Most Actives into a Telegram Markdown message."""
+    if min_oi is None:
+        min_oi = get_default_min_oi(symbol)
     data = get_quikstrike_most_actives(min_oi=min_oi, symbol=symbol)
     meta = data["metadata"]
     prev_d = meta["prev_date"]
@@ -235,7 +244,7 @@ def format_quikstrike_telegram_message(min_oi: int = 1000, symbol: str = "GC") -
         f"🎯 **CME QUIKSTRIKE: MOST ACTIVES ({inst})**",
         f"📊 *Отбор крупных контрактов: Open Interest ≥ {min_oi:,} контр.*",
         f"📅 Сравнение: `{prev_d}` ➔ `{curr_d}`\n",
-        "🟢 **ТОП CALLS (OI ≥ 1,000):**",
+        f"🟢 **ТОП CALLS (OI ≥ {min_oi:,}):**",
         "`Страйк | Эксп | Объём | Текущ.OI | Изм(CHG)`",
         "─────────────────────────────────"
     ]
@@ -247,7 +256,7 @@ def format_quikstrike_telegram_message(min_oi: int = 1000, symbol: str = "GC") -
             f"{icon} `{c['strike']:<5} | {c['exp']:<5} | {c['vol']:<5} | {c['curr_oi']:<7} | {chg_sign}{c['chg']}`"
         )
 
-    lines.append("\n🔴 **ТОП PUTS (OI ≥ 1,000):**")
+    lines.append(f"\n🔴 **ТОП PUTS (OI ≥ {min_oi:,}):**")
     lines.append("`Страйк | Эксп | Объём | Текущ.OI | Изм(CHG)`")
     lines.append("─────────────────────────────────")
 
@@ -303,7 +312,7 @@ def format_channel_report_message() -> str:
     lines = [
         "📊 **CME GROUP — ТОП-5 САМЫХ КРУПНЫХ КОНТРАКТОВ**",
         "🎯 *Открытый интерес (QuikStrike Open Interest Profile)*",
-        "⏰ *Ежедневный отчет на 12:30 (GMT+5)*\n",
+        "⏰ *Ежедневный отчет на 09:30 (МСК)*\n",
         "🏆 **ТОП-5 КОНТРАКТОВ ПО ОТКРЫТОМУ ИНТЕРЕСУ (OI):**",
         "───────────────────────────────"
     ]

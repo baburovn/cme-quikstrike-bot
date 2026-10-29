@@ -43,10 +43,12 @@ async def run_bot():
         )
         await bot.set_my_commands([
             BotCommand(command="start", description="🚀 Главное меню и запуск Mini App"),
-            BotCommand(command="oi", description="🎯 Most Actives OI (Крупные контракты ≥1000)"),
+            BotCommand(command="oi", description="🎯 Most Actives OI (Крупные контракты)"),
             BotCommand(command="post", description="📢 Отправить Топ-5 контрактов в канал"),
+            BotCommand(command="update_oi", description="🔄 Спарсить свежие данные CME QuikStrike"),
             BotCommand(command="channel", description="📢 Проверить привязанный канал"),
             BotCommand(command="setchannel", description="⚙️ Привязать канал вручную"),
+            BotCommand(command="setcme", description="🔑 Настроить логин/пароль CME"),
             BotCommand(command="quotes", description="📊 Текстовый список котировок"),
             BotCommand(command="info", description="ℹ️ О системе"),
         ])
@@ -57,10 +59,10 @@ async def run_bot():
     dp = Dispatcher()
     dp.include_router(router)
 
-    # Start automated 12:30 GMT+5 channel scheduler task
+    # Start automated 09:30 MSK channel scheduler task
     asyncio.create_task(start_channel_scheduler(bot))
 
-    logger.info("Бот aiogram запущен с планировщиком канала (12:30 GMT+5)!")
+    logger.info("Бот aiogram запущен с планировщиком канала (09:30 МСК)!")
     await dp.start_polling(bot)
 
 

@@ -3,7 +3,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Set
+from typing import Set, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -111,8 +111,8 @@ async def api_get_contract_by_symbol(symbol: str):
 
 
 @app.get("/api/options/most-actives")
-async def api_get_options_most_actives(min_oi: int = 1000, symbol: str = "GC"):
-    """Returns CME QuikStrike Most Actives filtered by Open Interest."""
+async def api_get_options_most_actives(min_oi: Optional[int] = None, symbol: str = "GC"):
+    """Returns CME QuikStrike Most Actives filtered by Open Interest (default: 500 for SI, 1000 for others)."""
     return {"status": "ok", "data": get_quikstrike_most_actives(min_oi=min_oi, symbol=symbol)}
 
 

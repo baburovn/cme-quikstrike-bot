@@ -132,7 +132,14 @@ async def cmd_text_quotes(message: Message):
 @router.message(F.text == "🎯 Most Actives OI (≥1000)")
 @router.message(F.text.lower().contains("most active") | F.text.lower().contains("открытый интерес") | F.text.lower().contains("quikstrike"))
 async def cmd_quikstrike_oi(message: Message):
-    text = format_quikstrike_telegram_message(min_oi=1000)
+    sym = "GC"
+    raw_text = (message.text or "").strip()
+    parts = raw_text.split()
+    if len(parts) > 1 and parts[1].upper() in ("SI", "GC", "6E", "6B", "6A"):
+        sym = parts[1].upper()
+    elif "серебр" in raw_text.lower() or "silver" in raw_text.lower():
+        sym = "SI"
+    text = format_quikstrike_telegram_message(symbol=sym)
     await message.answer(
         text,
         reply_markup=get_oi_inline_keyboard(),
@@ -219,7 +226,7 @@ async def on_my_chat_member(event: ChatMemberUpdated, bot: Bot):
                     chat_id=event.chat.id,
                     text=(
                         f"✅ **Бот подключен к каналу «{event.chat.title}»!**\n\n"
-                        f"⏰ Автоматический отчет: **ежедневно в 12:30 (GMT+5)**\n"
+                        f"⏰ Автоматический отчет: **ежедневно по будням в 09:30 (МСК)**\n"
                         f"📊 В отчет входит: Топ-5 самых крупных контрактов (Open Interest).\n"
                         f"🚀 [Открыть CME Mini App]({config.WEBAPP_URL})"
                     ),
@@ -239,7 +246,7 @@ async def cmd_post_to_channel(message: Message, bot: Bot):
             "⚠️ **Канал еще не привязан!**\n\n"
             "1. Добавьте бота @cme_daily_info_bot в ваш канал как **Администратора**.\n"
             "2. Или напишите команду `/setchannel @имя_канала`\n\n"
-            "После этого бот сможет автоматически отправлять отчет в 12:30 GMT+5 и по кнопке.",
+            "После этого бот сможет автоматически отправлять отчет по будням в 09:30 МСК и по кнопке.",
             parse_mode=ParseMode.MARKDOWN
         )
         return
@@ -276,7 +283,7 @@ async def cmd_set_channel(message: Message, bot: Bot):
             f"✅ **Канал успешно привязан:**\n"
             f"• Название: **{chat.title or target}**\n"
             f"• ID: `{chat.id}`\n"
-            f"• Расписание: **Ежедневно в 12:30 GMT+5**\n\n"
+            f"• Расписание: **Ежедневно по будням в 09:30 МСК**\n\n"
             f"👉 Чтобы отправить отчет прямо сейчас: /post",
             parse_mode=ParseMode.MARKDOWN
         )
@@ -306,7 +313,7 @@ async def cmd_channel_status(message: Message):
         f"📢 **Привязанный канал:**\n\n"
         f"• **Название:** {title}\n"
         f"• **ID:** `{cid}`\n"
-        f"• **Авто-отправка:** Ежедневно в 12:30 GMT+5\n"
+        f"• **Авто-отправка:** Ежедневно по будням в 09:30 МСК\n"
         f"• **Последний отчет:** `{last_d}`\n\n"
         f"👉 Для отправки отчета сейчас: /post",
         parse_mode=ParseMode.MARKDOWN
@@ -375,7 +382,7 @@ async def cmd_info(message: Message):
         "• **Отчеты:** QuikStrike Options Open Interest Profile (Most Actives)\n"
         f"• **Частота обновления котировок:** {config.UPDATE_INTERVAL_SECONDS} сек.\n"
         f"• **Логин CME:** `{config.CME_LOGIN}` (изменить: /setcme)\n"
-        "• **Автопостинг в канал:** Ежедневно в 12:30 GMT+5 (сбор в 12:15)\n"
+        "• **Автопостинг в канал:** Ежедневно по будням в 09:30 МСК (сбор в 09:15)\n"
         "• **Команды:** /post, /update_oi, /channel, /setchannel, /setcme, /oi, /quotes\n"
     )
     await message.answer(info_text, parse_mode=ParseMode.MARKDOWN)
@@ -397,7 +404,7 @@ async def main():
         )
         await bot.set_my_commands([
             BotCommand(command="start", description="🚀 Главное меню и запуск Mini App"),
-            BotCommand(command="oi", description="🎯 Most Actives OI (Крупные контракты ≥1000)"),
+            BotCommand(command="oi", description="🎯 Most Actives OI (Крупные контракты)"),
             BotCommand(command="post", description="📢 Отправить Топ-5 контрактов в канал"),
             BotCommand(command="update_oi", description="🔄 Спарсить свежие данные CME QuikStrike"),
             BotCommand(command="channel", description="📢 Проверить привязанный канал"),
@@ -413,10 +420,10 @@ async def main():
     dp = Dispatcher()
     dp.include_router(router)
 
-    # Start automated 12:30 GMT+5 channel scheduler task
+    # Start automated 09:30 MSK channel scheduler task
     asyncio.create_task(start_channel_scheduler(bot))
 
-    logger.info("🚀 Бот CME Metals Mini App запущен с поддержкой каналов и расписанием 12:30 GMT+5!")
+    logger.info("🚀 Бот CME Metals Mini App запущен с поддержкой каналов и расписанием 09:30 МСК!")
     await dp.start_polling(bot)
 
 

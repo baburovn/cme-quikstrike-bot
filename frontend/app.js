@@ -824,6 +824,24 @@ function setupMainNav() {
       pill.classList.add("active");
       currentQsSymbol = pill.dataset.qsSymbol;
       tgHaptic("medium");
+
+      // Auto-adapt min_oi threshold: 500 for Silver (SI), 1000 for others
+      if (currentQsSymbol === "SI") {
+        currentMinOi = 500;
+      } else if (currentMinOi === 500) {
+        currentMinOi = 1000;
+      }
+
+      // Update active state on filter pills
+      document.querySelectorAll(".filter-pill").forEach(p => {
+        const val = parseInt(p.dataset.minoi, 10);
+        if (val === currentMinOi) {
+          p.classList.add("active");
+        } else {
+          p.classList.remove("active");
+        }
+      });
+
       // Update subtitle
       const subtitle = document.getElementById("qsSubtitle");
       if (subtitle) {

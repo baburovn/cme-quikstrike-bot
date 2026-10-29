@@ -32,8 +32,16 @@ class TestCMEDomain(unittest.TestCase):
         self.assertIn("total_calls_all", data)
         self.assertIn("total_puts_all", data)
 
+    def test_silver_default_min_oi_is_500(self):
+        data = cme_fetcher.get_quikstrike_most_actives(symbol="SI")
+        self.assertEqual(data["min_oi_filter"], 500)
+
+    def test_gold_default_min_oi_is_1000(self):
+        data = cme_fetcher.get_quikstrike_most_actives(symbol="GC")
+        self.assertEqual(data["min_oi_filter"], 1000)
+
     def test_format_quikstrike_telegram_message(self):
-        msg = cme_fetcher.format_quikstrike_telegram_message(min_oi=1000, symbol="GC")
+        msg = cme_fetcher.format_quikstrike_telegram_message(symbol="GC")
         self.assertIsInstance(msg, str)
         self.assertIn("CME QUIKSTRIKE", msg)
         self.assertIn("CALLS", msg)
@@ -45,6 +53,8 @@ class TestCMEDomain(unittest.TestCase):
         self.assertIn("CME GROUP", report)
         self.assertIn("ТОП-5 КОНТРАКТОВ ПО ОТКРЫТОМУ ИНТЕРЕСУ", report)
         self.assertIn("ТОП-5 ПО МАКСИМАЛЬНОМУ ПРИТОКУ", report)
+        self.assertIn("09:30 (МСК)", report)
+        self.assertNotIn("12:30", report)
         self.assertNotIn("Актуальные котировки рынка CME", report)
 
 

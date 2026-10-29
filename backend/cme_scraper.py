@@ -28,7 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger("cme-scraper")
 
 CACHE_FILE = Path(__file__).resolve().parent / "quikstrike_cache.json"
-TZ_GMT5 = timezone(timedelta(hours=5))
+TZ_MSK = timezone(timedelta(hours=3))
 
 PRODUCTS = [
     {"sym": "GC", "pid": 40, "name": "Gold (Золото)"},
@@ -229,8 +229,8 @@ async def run_scraper() -> Tuple[bool, str]:
 
     # Save to cache file
     cache_payload = {
-        "updated_at": datetime.now(TZ_GMT5).strftime("%Y-%m-%d %H:%M:%S (GMT+5)"),
-        "date_key": datetime.now(TZ_GMT5).strftime("%Y-%m-%d"),
+        "updated_at": datetime.now(TZ_MSK).strftime("%Y-%m-%d %H:%M:%S (МСК)"),
+        "date_key": datetime.now(TZ_MSK).strftime("%Y-%m-%d"),
         "metadata": scraped_meta,
         "data": scraped_data
     }
