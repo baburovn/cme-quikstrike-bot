@@ -237,7 +237,7 @@ async def cmd_post_to_channel(message: Message, bot: Bot):
     if not is_channel_configured():
         await message.answer(
             "⚠️ **Канал еще не привязан!**\n\n"
-            "1. Добавьте бота @Lobashevaibot в ваш канал как **Администратора**.\n"
+            "1. Добавьте бота @cme_daily_info_bot в ваш канал как **Администратора**.\n"
             "2. Или напишите команду `/setchannel @имя_канала`\n\n"
             "После этого бот сможет автоматически отправлять отчет в 12:30 GMT+5 и по кнопке.",
             parse_mode=ParseMode.MARKDOWN
