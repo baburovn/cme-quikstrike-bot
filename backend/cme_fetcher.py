@@ -8,6 +8,7 @@ import json
 import logging
 import random
 import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -16,6 +17,9 @@ from cme_products import CME_PRODUCTS
 from quikstrike_defaults import QUIKSTRIKE_DATA, QUIKSTRIKE_METADATA
 
 logger = logging.getLogger(__name__)
+
+# Moscow timezone (UTC+3)
+TZ_MSK = timezone(timedelta(hours=3))
 
 # Cache file path
 CACHE_FILE = Path(__file__).resolve().parent / "quikstrike_cache.json"
@@ -230,20 +234,38 @@ def get_quikstrike_most_actives(min_oi: Optional[int] = None, symbol: str = "GC"
     }
 
 
+def format_qs_date(d_str: str) -> str:
+    """Translates 3-letter English month names to Russian (e.g. NOV 6 -> НОЯ 6)."""
+    if not d_str:
+        return ""
+    months = {
+        "JAN": "ЯНВ", "FEB": "ФЕВ", "MAR": "МАР", "APR": "АПР",
+        "MAY": "МАЙ", "JUN": "ИЮН", "JUL": "ИЮЛ", "AUG": "АВГ",
+        "SEP": "СЕН", "OCT": "ОКТ", "NOV": "НОЯ", "DEC": "ДЕК"
+    }
+    res = str(d_str).upper().strip()
+    for en, ru in months.items():
+        res = res.replace(en, ru)
+    return res
+
+
 def format_quikstrike_telegram_message(min_oi: Optional[int] = None, symbol: str = "GC") -> str:
     """Formats QuikStrike Most Actives into a Telegram Markdown message."""
     if min_oi is None:
         min_oi = get_default_min_oi(symbol)
     data = get_quikstrike_most_actives(min_oi=min_oi, symbol=symbol)
     meta = data["metadata"]
-    prev_d = meta["prev_date"]
-    curr_d = meta["curr_date"]
+    prev_d = format_qs_date(meta.get("prev_date", ""))
+    curr_d = format_qs_date(meta.get("curr_date", ""))
     inst = meta.get("instrument", symbol)
+
+    weekday = datetime.now(TZ_MSK).weekday()
+    friday_note = " *(Итоги пятницы)*" if weekday in (0, 5, 6) else ""
 
     lines = [
         f"🎯 **CME QUIKSTRIKE: MOST ACTIVES ({inst})**",
         f"📊 *Отбор крупных контрактов: Open Interest ≥ {min_oi:,} контр.*",
-        f"📅 Сравнение: `{prev_d}` ➔ `{curr_d}`\n",
+        f"📅 Сравнение: `{prev_d}` ➔ `{curr_d}`{friday_note}\n",
         f"🟢 **ТОП CALLS (OI ≥ {min_oi:,}):**",
         "`Страйк | Эксп | Объём | Текущ.OI | Изм(CHG)`",
         "─────────────────────────────────"
@@ -304,18 +326,32 @@ def get_top_contracts(limit: int = 5, sort_by: str = "curr_oi") -> List[Dict[str
 
 def format_channel_report_message() -> str:
     """Formats top 5 largest contracts and market overview for Telegram channel."""
+    all_data, all_meta = get_live_quikstrike_dataset()
     top5_oi = get_top_contracts(limit=5, sort_by="curr_oi")
     top5_inflow = get_top_contracts(limit=5, sort_by="chg_inflow")
 
+    gc_meta = all_meta.get("GC", {})
+    prev_d = format_qs_date(gc_meta.get("prev_date", ""))
+    curr_d = format_qs_date(gc_meta.get("curr_date", ""))
+
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+
+    weekday = datetime.now(TZ_MSK).weekday()
+    session_label = " *(Итоги сессии пятницы)*" if weekday in (0, 5, 6) else ""
+    date_line = f"📅 Срез биржи: `{prev_d}` ➔ `{curr_d}`{session_label}" if (prev_d and curr_d) else ""
 
     lines = [
         "📊 **CME GROUP — ТОП-5 САМЫХ КРУПНЫХ КОНТРАКТОВ**",
         "🎯 *Открытый интерес (QuikStrike Open Interest Profile)*",
-        "⏰ *Ежедневный отчет на 09:30 (МСК)*\n",
+        "⏰ *Ежедневный отчет на 09:30 (МСК)*",
+    ]
+    if date_line:
+        lines.append(date_line)
+    lines.extend([
+        "",
         "🏆 **ТОП-5 КОНТРАКТОВ ПО ОТКРЫТОМУ ИНТЕРЕСУ (OI):**",
         "───────────────────────────────"
-    ]
+    ])
 
     for i, c in enumerate(top5_oi):
         medal = medals[i] if i < len(medals) else f"{i+1}."

@@ -151,7 +151,7 @@ async def cmd_quikstrike_oi(message: Message):
 @router.callback_query(F.data == "refresh_oi_data")
 async def cb_refresh_oi(query: CallbackQuery):
     await query.answer("Данные QuikStrike обновлены!")
-    text = format_quikstrike_telegram_message(min_oi=1000)
+    text = format_quikstrike_telegram_message(symbol="GC")
     try:
         await query.message.edit_text(
             text,

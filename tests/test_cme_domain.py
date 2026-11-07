@@ -47,6 +47,11 @@ class TestCMEDomain(unittest.TestCase):
         self.assertIn("CALLS", msg)
         self.assertIn("PUTS", msg)
 
+    def test_format_qs_date(self):
+        self.assertEqual(cme_fetcher.format_qs_date("NOV 5"), "НОЯ 5")
+        self.assertEqual(cme_fetcher.format_qs_date("OCT 1"), "ОКТ 1")
+        self.assertEqual(cme_fetcher.format_qs_date(""), "")
+
     def test_format_channel_report_message(self):
         report = cme_fetcher.format_channel_report_message()
         self.assertIsInstance(report, str)
@@ -54,6 +59,7 @@ class TestCMEDomain(unittest.TestCase):
         self.assertIn("ТОП-5 КОНТРАКТОВ ПО ОТКРЫТОМУ ИНТЕРЕСУ", report)
         self.assertIn("ТОП-5 ПО МАКСИМАЛЬНОМУ ПРИТОКУ", report)
         self.assertIn("09:30 (МСК)", report)
+        self.assertIn("Срез биржи:", report)
         self.assertNotIn("12:30", report)
         self.assertNotIn("Актуальные котировки рынка CME", report)
 
