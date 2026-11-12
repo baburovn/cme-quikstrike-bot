@@ -142,7 +142,7 @@ async def cmd_quikstrike_oi(message: Message):
     text = format_quikstrike_telegram_message(symbol=sym)
     await message.answer(
         text,
-        reply_markup=get_oi_inline_keyboard(),
+        reply_markup=get_oi_inline_keyboard(symbol=sym),
         parse_mode=ParseMode.MARKDOWN,
         disable_web_page_preview=True
     )

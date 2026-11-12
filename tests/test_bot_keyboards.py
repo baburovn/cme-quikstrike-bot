@@ -32,6 +32,12 @@ class TestBotKeyboards(unittest.TestCase):
         self.assertIsNotNone(kb)
         self.assertTrue(len(kb.keyboard) >= 3)
 
+    def test_get_share_url(self):
+        url = bot_keyboards.get_share_url(text="Test share text", url="https://t.me/cme_daily_info_bot")
+        self.assertTrue(url.startswith("https://t.me/share/url?"))
+        self.assertIn("url=", url)
+        self.assertIn("text=", url)
+
     def test_inline_keyboards(self):
         miniapp_kb = bot_keyboards.get_miniapp_inline_keyboard()
         self.assertIsNotNone(miniapp_kb)
@@ -39,6 +45,19 @@ class TestBotKeyboards(unittest.TestCase):
         self.assertIsNotNone(oi_kb)
         ch_kb = bot_keyboards.get_channel_inline_keyboard()
         self.assertIsNotNone(ch_kb)
+
+        # Verify share buttons exist in all keyboards
+        def find_share_btn(kb):
+            for row in kb.inline_keyboard:
+                for btn in row:
+                    text = btn.get("text", "") if isinstance(btn, dict) else getattr(btn, "text", "")
+                    if "Поделиться" in text:
+                        return btn
+            return None
+
+        self.assertIsNotNone(find_share_btn(ch_kb), "Share button missing in channel keyboard")
+        self.assertIsNotNone(find_share_btn(oi_kb), "Share button missing in OI keyboard")
+        self.assertIsNotNone(find_share_btn(miniapp_kb), "Share button missing in Mini App keyboard")
 
 
 if __name__ == "__main__":
