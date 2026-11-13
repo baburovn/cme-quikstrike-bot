@@ -22,6 +22,7 @@ sync_specs.py
 check_remote.py
 stop_old_bot.py
 update_frontend.py
+deploy_new_vps.py
 
 # Logs and runtime dumps
 *.log
