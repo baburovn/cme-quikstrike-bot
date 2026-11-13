@@ -15,6 +15,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import config
 from cme_products import CME_PRODUCTS
 from quikstrike_defaults import QUIKSTRIKE_DATA, QUIKSTRIKE_METADATA
+from cme_analytics import analyze_quikstrike_options, format_analytics_footnote
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,22 @@ def format_quikstrike_telegram_message(min_oi: Optional[int] = None, symbol: str
             f"{icon} `{p['strike']:<5} | {p['exp']:<5} | {p['vol']:<5} | {p['curr_oi']:<7} | {chg_sign}{p['chg']}`"
         )
 
+    # Algorithmic options analytics footnote
+    raw_calls = data.get("calls", [])
+    raw_puts = data.get("puts", [])
+    quote = get_quote_by_symbol(symbol)
+    cur_p = quote.get("price", 0.0) if quote else 0.0
+    if cur_p == 0.0:
+        for prod in CME_PRODUCTS:
+            if prod["symbol"] == symbol.upper():
+                cur_p = prod.get("base_price", 0.0)
+                break
+    analysis = analyze_quikstrike_options(raw_calls, raw_puts, current_price=cur_p, symbol=symbol)
+    footnote = format_analytics_footnote(analysis, instrument_name=inst)
+
     lines.append("\n─────────────────────────────────")
+    lines.append(footnote)
+    lines.append("─────────────────────────────────")
     lines.append(f"🔗 [Открыть отчет на CME QuikStrike]({meta['source_url']})")
     lines.append("💡 *Для интерактивной таблицы с графиками нажмите кнопку ниже:*")
 
@@ -371,7 +387,21 @@ def format_channel_report_message() -> str:
             f"{i+1}. **{c['sym']}** {type_icon} `{c['strike']}`: `{chg_sign}{c['chg']:,}` контр. (Всего OI: `{c['curr_oi']:,}`)"
         )
 
+    # Algorithmic options analytics footnote for Gold
+    gc_data = all_data.get("GC", {})
+    gc_quote = get_quote_by_symbol("GC")
+    gc_price = gc_quote.get("price", 2748.5) if gc_quote else 2748.5
+    gc_analysis = analyze_quikstrike_options(
+        gc_data.get("calls", []),
+        gc_data.get("puts", []),
+        current_price=gc_price,
+        symbol="GC"
+    )
+    gc_footnote = format_analytics_footnote(gc_analysis, instrument_name="Золото (GC)")
+
     lines.append("\n───────────────────────────────")
+    lines.append(gc_footnote)
+    lines.append("───────────────────────────────")
     lines.append(f"🔗 [Открыть полный отчет QuikStrike]({config.WEBAPP_URL})")
 
     return "\n".join(lines)
