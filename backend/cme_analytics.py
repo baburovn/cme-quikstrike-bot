@@ -168,4 +168,6 @@ def format_analytics_footnote(analysis: Dict[str, Any], instrument_name: str = "
         c_chg = int(top_inflow.get("chg", 0))
         lines.append(f"• ⚡️ **Смарт-мани:** макс. суточный приток в {c_type} `{c_strike}` (`+{c_chg:,}` контр.)")
 
+    lines.append("\n📢 *Детальный анализ у нас в канале, ссылка в шапке профиля*")
+
     return "\n".join(lines)

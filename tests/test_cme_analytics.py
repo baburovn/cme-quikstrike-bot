@@ -67,6 +67,7 @@ class TestCMEAnalytics(unittest.TestCase):
         self.assertIn("Сентимент", report)
         self.assertIn("Поддержка", report)
         self.assertIn("Сопротивление", report)
+        self.assertIn("Детальный анализ у нас в канале, ссылка в шапке профиля", report)
 
     def test_bot_quikstrike_message_contains_footnote(self):
         msg = format_quikstrike_telegram_message(symbol="GC")
@@ -74,6 +75,7 @@ class TestCMEAnalytics(unittest.TestCase):
         self.assertIn("Золото", msg)
         self.assertIn("Поддержка", msg)
         self.assertIn("Сопротивление", msg)
+        self.assertIn("Детальный анализ у нас в канале, ссылка в шапке профиля", msg)
 
 
 if __name__ == "__main__":
