@@ -8,6 +8,7 @@ import logging
 import sys
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import (
     BotCommand,
@@ -148,39 +149,50 @@ async def cmd_quikstrike_oi(message: Message):
     )
 
 
-@router.callback_query(F.data == "refresh_oi_data")
-async def cb_refresh_oi(query: CallbackQuery):
-    await query.answer("Данные QuikStrike обновлены!")
-    text = format_quikstrike_telegram_message(symbol="GC")
+async def _safe_edit_text(
+    message: Message,
+    text: str,
+    reply_markup=None,
+    disable_web_page_preview: bool = False
+) -> None:
+    """Edits message text while ignoring harmless 'message is not modified' errors."""
     try:
-        await query.message.edit_text(
+        await message.edit_text(
             text,
-            reply_markup=get_oi_inline_keyboard(),
+            reply_markup=reply_markup,
             parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True
+            disable_web_page_preview=disable_web_page_preview
         )
-    except Exception:
-        pass
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e).lower():
+            logger.warning(f"Telegram edit_text error: {e}")
+    except Exception as e:
+        logger.warning(f"Unexpected edit_text error: {e}")
+
+
+@router.callback_query(F.data.startswith("refresh_oi_data"))
+async def cb_refresh_oi(query: CallbackQuery):
+    sym = "GC"
+    if query.data and ":" in query.data:
+        sym = query.data.split(":", 1)[1].upper() or "GC"
+    await query.answer("Данные QuikStrike обновлены!")
+    text = format_quikstrike_telegram_message(symbol=sym)
+    await _safe_edit_text(
+        query.message,
+        text,
+        reply_markup=get_oi_inline_keyboard(symbol=sym),
+        disable_web_page_preview=True
+    )
 
 
 @router.callback_query(F.data == "refresh_text_quotes")
-async def cb_refresh_text(query: CallbackQuery, bot: Bot):
+async def cb_refresh_text(query: CallbackQuery):
     await query.answer("Котировки обновлены!")
-    try:
-        await query.message.edit_text(
-            format_text_quotes(),
-            reply_markup=get_miniapp_inline_keyboard(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    except Exception:
-        pass
-
-    # When user clicks "Обновить текст", if channel is configured, also push update
-    if is_channel_configured():
-        try:
-            await send_report_to_channel(bot)
-        except Exception as e:
-            logger.warning(f"Auto-update channel on refresh error: {e}")
+    await _safe_edit_text(
+        query.message,
+        format_text_quotes(),
+        reply_markup=get_miniapp_inline_keyboard()
+    )
 
 
 @router.callback_query(F.data == "publish_to_channel")
@@ -195,15 +207,12 @@ async def cb_publish_to_channel(query: CallbackQuery, bot: Bot):
 @router.callback_query(F.data == "refresh_channel_report")
 async def cb_refresh_channel_report(query: CallbackQuery):
     await query.answer("Отчет обновлен!")
-    try:
-        await query.message.edit_text(
-            format_channel_report_message(),
-            reply_markup=get_channel_inline_keyboard(),
-            parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True
-        )
-    except Exception:
-        pass
+    await _safe_edit_text(
+        query.message,
+        format_channel_report_message(),
+        reply_markup=get_channel_inline_keyboard(),
+        disable_web_page_preview=True
+    )
 
 
 # =====================================================================

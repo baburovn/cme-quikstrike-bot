@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -17,6 +18,8 @@ logger = logging.getLogger("cme-channel-manager")
 
 CONFIG_PATH = Path(__file__).resolve().parent / "channel_config.json"
 TZ_MSK = timezone(timedelta(hours=3))
+_SCRAPE_LOCK = asyncio.Lock()
+SCRAPE_TIMEOUT_SECONDS = 180
 
 
 def get_channel_config() -> Dict[str, Any]:
@@ -55,8 +58,10 @@ def save_channel_config(
     cfg["updated_at"] = datetime.now(TZ_MSK).strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        tmp_path = CONFIG_PATH.with_suffix(".json.tmp")
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, CONFIG_PATH)
         logger.info(f"Saved channel config: {cfg.get('channel_title')} ({cfg.get('channel_id')})")
     except Exception as e:
         logger.error(f"Error saving channel config: {e}")
@@ -67,33 +72,49 @@ def save_channel_config(
 async def trigger_cme_scraper() -> Tuple[bool, str]:
     """
     Executes cme_scraper.py under xvfb-run to update quikstrike_cache.json with fresh CME data.
+    Protected by an async lock and subprocess timeout to prevent concurrent browser runs or hangs.
     """
+    if _SCRAPE_LOCK.locked():
+        logger.info("CME scraper requested while already running; skipping duplicate execution.")
+        return False, "⏳ Сбор свежих данных CME уже выполняется, подождите 30–60 секунд."
+
     scraper_path = Path(__file__).resolve().parent / "cme_scraper.py"
     cmd = ["xvfb-run", "-a", sys.executable, str(scraper_path)]
-    logger.info(f"Launching CME scraper: {' '.join(cmd)}")
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await proc.communicate()
-        out_str = stdout.decode("utf-8", errors="ignore").strip()
-        err_str = stderr.decode("utf-8", errors="ignore").strip()
+    async with _SCRAPE_LOCK:
+        logger.info(f"Launching CME scraper: {' '.join(cmd)}")
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=SCRAPE_TIMEOUT_SECONDS
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"CME scraper timed out after {SCRAPE_TIMEOUT_SECONDS}s; killing process.")
+                proc.kill()
+                await proc.wait()
+                return False, f"❌ Превышено время ожидания парсера CME ({SCRAPE_TIMEOUT_SECONDS} сек)."
 
-        if proc.returncode == 0:
-            today_str = datetime.now(TZ_MSK).strftime("%Y-%m-%d")
-            cfg = get_channel_config()
-            save_channel_config(channel_id=cfg.get("channel_id", 0), last_scrape_date=today_str)
-            logger.info(f"CME scraper completed successfully: {out_str}")
-            return True, "✅ Свежие данные QuikStrike успешно собраны и обновлены!"
-        else:
-            logger.error(f"CME scraper failed (code {proc.returncode}): {err_str or out_str}")
-            return False, f"❌ Ошибка парсера CME: {err_str or out_str}"
-    except Exception as e:
-        logger.error(f"Exception running CME scraper: {e}")
-        return False, f"❌ Ошибка запуска парсера: {e}"
+            out_str = stdout.decode("utf-8", errors="ignore").strip()
+            err_str = stderr.decode("utf-8", errors="ignore").strip()
+
+            if proc.returncode == 0:
+                today_str = datetime.now(TZ_MSK).strftime("%Y-%m-%d")
+                cfg = get_channel_config()
+                save_channel_config(channel_id=cfg.get("channel_id", 0), last_scrape_date=today_str)
+                logger.info(f"CME scraper completed successfully: {out_str}")
+                return True, "✅ Свежие данные QuikStrike успешно собраны и обновлены!"
+            else:
+                logger.error(f"CME scraper failed (code {proc.returncode}): {err_str or out_str}")
+                return False, f"❌ Ошибка парсера CME: {err_str or out_str}"
+        except Exception as e:
+            logger.error(f"Exception running CME scraper: {e}")
+            return False, f"❌ Ошибка запуска парсера: {e}"
 
 
 def is_channel_configured() -> bool:

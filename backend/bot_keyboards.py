@@ -90,7 +90,7 @@ def get_oi_inline_keyboard(symbol: str = "GC") -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="🔄 Обновить данные",
-                    callback_data="refresh_oi_data"
+                    callback_data=f"refresh_oi_data:{symbol.upper()}"
                 ),
                 InlineKeyboardButton(
                     text="↗️ Поделиться",

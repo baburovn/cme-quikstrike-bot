@@ -29,6 +29,8 @@ CACHE_FILE = Path(__file__).resolve().parent / "quikstrike_cache.json"
 _MARKET_STATE: Dict[str, Dict[str, Any]] = {}
 _CANDLE_HISTORY: Dict[str, List[Dict[str, Any]]] = {}
 _LAST_UPDATE_TIME: int = 0
+_QS_CACHE_MTIME: float = 0.0
+_QS_CACHE_TUPLE: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None
 
 
 def _init_market_state():
@@ -191,15 +193,21 @@ async def start_cme_market_loop():
 
 
 def get_live_quikstrike_dataset() -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Returns dynamic data from quikstrike_cache.json if available, or static fallback."""
+    """Returns dynamic data from quikstrike_cache.json (cached in memory by mtime) or static fallback."""
+    global _QS_CACHE_MTIME, _QS_CACHE_TUPLE
     if CACHE_FILE.exists():
         try:
+            mtime = CACHE_FILE.stat().st_mtime
+            if _QS_CACHE_TUPLE is not None and mtime == _QS_CACHE_MTIME:
+                return _QS_CACHE_TUPLE
             with open(CACHE_FILE, "r", encoding="utf-8") as f:
                 payload = json.load(f)
                 cached_data = payload.get("data")
                 cached_meta = payload.get("metadata")
                 if cached_data and cached_meta:
-                    return cached_data, cached_meta
+                    _QS_CACHE_MTIME = mtime
+                    _QS_CACHE_TUPLE = (cached_data, cached_meta)
+                    return _QS_CACHE_TUPLE
         except Exception as e:
             logger.error(f"Error reading quikstrike_cache.json: {e}")
     return QUIKSTRIKE_DATA, QUIKSTRIKE_METADATA

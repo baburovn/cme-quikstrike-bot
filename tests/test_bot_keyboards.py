@@ -59,6 +59,16 @@ class TestBotKeyboards(unittest.TestCase):
         self.assertIsNotNone(find_share_btn(oi_kb), "Share button missing in OI keyboard")
         self.assertIsNotNone(find_share_btn(miniapp_kb), "Share button missing in Mini App keyboard")
 
+        # Verify refresh button preserves instrument symbol
+        si_kb = bot_keyboards.get_oi_inline_keyboard(symbol="SI")
+        refresh_callbacks = [
+            (btn.get("callback_data", "") if isinstance(btn, dict) else getattr(btn, "callback_data", ""))
+            for row in si_kb.inline_keyboard
+            for btn in row
+            if "Обновить" in (btn.get("text", "") if isinstance(btn, dict) else getattr(btn, "text", ""))
+        ]
+        self.assertIn("refresh_oi_data:SI", refresh_callbacks)
+
 
 if __name__ == "__main__":
     unittest.main()

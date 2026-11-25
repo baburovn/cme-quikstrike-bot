@@ -60,18 +60,37 @@ async def run_bot():
     dp.include_router(router)
 
     # Start automated 09:30 MSK channel scheduler task
-    asyncio.create_task(start_channel_scheduler(bot))
+    scheduler_task = asyncio.create_task(start_channel_scheduler(bot))
 
     logger.info("Бот aiogram запущен с планировщиком канала (09:30 МСК)!")
-    await dp.start_polling(bot)
+    try:
+        # Disable aiogram's own signal handlers so uvicorn and asyncio handle SIGTERM cleanly
+        await dp.start_polling(bot, handle_signals=False)
+    finally:
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
+        await bot.session.close()
 
 
 async def main():
     logger.info("Запуск единого сервиса: FastAPI WebApp + Telegram Bot...")
-    await asyncio.gather(
-        run_fastapi(),
-        run_bot()
-    )
+    fastapi_task = asyncio.create_task(run_fastapi())
+    bot_task = asyncio.create_task(run_bot())
+    try:
+        done, pending = await asyncio.wait(
+            {fastapi_task, bot_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+    except asyncio.CancelledError:
+        for task in (fastapi_task, bot_task):
+            task.cancel()
+        await asyncio.gather(fastapi_task, bot_task, return_exceptions=True)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -236,8 +237,10 @@ async def run_scraper() -> Tuple[bool, str]:
     }
 
     try:
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        tmp_cache = CACHE_FILE.with_suffix(".json.tmp")
+        with open(tmp_cache, "w", encoding="utf-8") as f:
             json.dump(cache_payload, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_cache, CACHE_FILE)
         logger.info(f"Successfully saved scraped data to {CACHE_FILE}")
         return True, f"Успешно спарсены данные по {len(scraped_data)} инструментам!"
     except Exception as e:
