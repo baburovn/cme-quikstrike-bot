@@ -8,7 +8,7 @@ load_dotenv(BASE_DIR / ".env")
 # Telegram Bot
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "cme_daily_info_bot")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://bbrv.ru")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://www.easy-cme.pro")
 
 # CME Credentials (from cme_credentials.py or .env)
 try:
