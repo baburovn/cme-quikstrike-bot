@@ -20,7 +20,7 @@ class TestCMEAnalytics(unittest.TestCase):
         self.assertEqual(analysis["pcr_oi"], 1.0)
         footnote = format_analytics_footnote(analysis, "Золото (GC)")
         self.assertIn("Золото (GC)", footnote)
-        self.assertIn("Сентимент", footnote)
+        self.assertIn("Движение", footnote)
 
     def test_bearish_scenario_with_itm_puts(self):
         sample_puts = [
@@ -43,8 +43,8 @@ class TestCMEAnalytics(unittest.TestCase):
         self.assertIn("4000", footnote)
         self.assertIn("4100", footnote)
         self.assertIn("находятся в деньгах", footnote)
-        self.assertIn("Поддержка", footnote)
-        self.assertIn("Сопротивление", footnote)
+        self.assertIn("Ближний PUT", footnote)
+        self.assertIn("Ближний CALL", footnote)
 
     def test_bullish_scenario(self):
         sample_puts = [
@@ -64,18 +64,40 @@ class TestCMEAnalytics(unittest.TestCase):
     def test_channel_report_contains_footnote(self):
         report = format_channel_report_message()
         self.assertIn("ЕЖЕДНЕВНАЯ СНОСКА / АНАЛИТИКА", report)
-        self.assertIn("Сентимент", report)
-        self.assertIn("Поддержка", report)
-        self.assertIn("Сопротивление", report)
+        self.assertIn("Движение", report)
+        self.assertIn("Ближний PUT", report)
+        self.assertIn("Ближний CALL", report)
         self.assertIn("Детальный анализ у нас в канале, ссылка в шапке профиля", report)
 
     def test_bot_quikstrike_message_contains_footnote(self):
         msg = format_quikstrike_telegram_message(symbol="GC")
         self.assertIn("ЕЖЕДНЕВНАЯ СНОСКА / АНАЛИТИКА", msg)
         self.assertIn("Золото", msg)
-        self.assertIn("Поддержка", msg)
-        self.assertIn("Сопротивление", msg)
+        self.assertIn("Ближний PUT", msg)
+        self.assertIn("Ближний CALL", msg)
         self.assertIn("Детальный анализ у нас в канале, ссылка в шапке профиля", msg)
+
+    def test_near_term_filtering_excludes_far_2027_contracts(self):
+        from datetime import datetime
+        from cme_analytics import TZ_MSK
+
+        now_nov = datetime(2026, 11, 26, 12, 0, tzinfo=TZ_MSK)
+        calls = [
+            {"strike": 3500, "exp": "OG1Z6", "curr_oi": 703, "chg": 701, "vol": 2000, "type": "CALL"},
+            {"strike": 3600, "exp": "OG1Z6", "curr_oi": 557, "chg": 532, "vol": 1900, "type": "CALL"},
+            {"strike": 5005, "exp": "OGN7", "curr_oi": 9000, "chg": 750, "vol": 780, "type": "CALL"},
+        ]
+        puts = [
+            {"strike": 3365, "exp": "G5MX6", "curr_oi": 1000, "chg": 1000, "vol": 1024, "type": "PUT"},
+            {"strike": 3400, "exp": "OG2Z6", "curr_oi": 545, "chg": 489, "vol": 617, "type": "PUT"},
+            {"strike": 2800, "exp": "OGN7", "curr_oi": 8500, "chg": 675, "vol": 756, "type": "PUT"},
+        ]
+        res = analyze_quikstrike_options(calls, puts, current_price=3568.0, symbol="GC", now_msk=now_nov)
+        self.assertTrue(res["is_near_term"])
+        self.assertEqual(res["resistance_strike"], 3500)
+        self.assertEqual(res["resistance_exp"], "OG1Z6")
+        self.assertEqual(res["support_strike"], 3365)
+        self.assertEqual(res["support_exp"], "G5MX6")
 
     def test_cme_guide_message_without_sentiment(self):
         guide = format_cme_guide_message()
