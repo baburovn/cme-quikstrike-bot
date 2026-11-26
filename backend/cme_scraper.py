@@ -182,18 +182,23 @@ async def run_scraper() -> Tuple[bool, str]:
                     link_sel = "#MainContent_ucViewControl_IntegratedOpenInterestTool_lbMostActives"
                     await qs_frame.wait_for_selector(link_sel, timeout=20000)
                     await qs_frame.click(link_sel)
-                    await asyncio.sleep(6)
 
-                    # Extract all grid-thm tables
-                    table_rows = await qs_frame.eval_on_selector_all(
-                        "table.grid-thm",
-                        """els => els.map(e => Array.from(e.rows).map(r => Array.from(r.cells).map(c => c.innerText.trim())))"""
-                    )
+                    # Wait dynamically up to 20s for Most Actives tables to render
+                    data_tables = []
+                    total_tables = 0
+                    for _ in range(13):
+                        await asyncio.sleep(1.5)
+                        table_rows = await qs_frame.eval_on_selector_all(
+                            "table.grid-thm",
+                            """els => els.map(e => Array.from(e.rows).map(r => Array.from(r.cells).map(c => c.innerText.trim())))"""
+                        )
+                        total_tables = len(table_rows)
+                        data_tables = [t for t in table_rows if len(t) >= 10]
+                        if len(data_tables) >= 2:
+                            break
 
-                    # Filter only the tables with actual strike data (>= 10 rows)
-                    data_tables = [t for t in table_rows if len(t) >= 10]
                     if len(data_tables) < 2:
-                        logger.warning(f"Expected at least 2 data tables for {sym}, found {len(data_tables)} (total grid tables: {len(table_rows)})")
+                        logger.warning(f"Expected at least 2 data tables for {sym}, found {len(data_tables)} (total grid tables: {total_tables})")
                         continue
 
                     calls, prev_d, curr_d = parse_table_rows(data_tables[0], "CALL")
@@ -228,12 +233,27 @@ async def run_scraper() -> Tuple[bool, str]:
         logger.warning(msg)
         return False, msg
 
+    # Preserve any previously cached instruments if a single product failed in this run
+    merged_meta = {}
+    merged_data = {}
+    if CACHE_FILE.exists():
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                old_payload = json.load(f)
+                merged_meta.update(old_payload.get("metadata", {}))
+                merged_data.update(old_payload.get("data", {}))
+        except Exception as e:
+            logger.warning(f"Could not read previous cache for merge: {e}")
+
+    merged_meta.update(scraped_meta)
+    merged_data.update(scraped_data)
+
     # Save to cache file
     cache_payload = {
         "updated_at": datetime.now(TZ_MSK).strftime("%Y-%m-%d %H:%M:%S (МСК)"),
         "date_key": datetime.now(TZ_MSK).strftime("%Y-%m-%d"),
-        "metadata": scraped_meta,
-        "data": scraped_data
+        "metadata": merged_meta,
+        "data": merged_data
     }
 
     try:
