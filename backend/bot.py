@@ -26,6 +26,7 @@ from bot_keyboards import (
     get_oi_inline_keyboard,
     get_channel_inline_keyboard,
 )
+from cme_analytics import format_cme_guide_message
 from cme_fetcher import (
     get_all_quotes,
     format_quikstrike_telegram_message,
@@ -80,6 +81,11 @@ def format_text_quotes() -> str:
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, bot: Bot):
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) > 1 and parts[1].strip().lower() == "guide":
+        await cmd_cme_guide(message)
+        return
+
     welcome_text = (
         "🪙 **Добро пожаловать в CME Metals Terminal!**\n\n"
         "Мы превратили бота в **полноценный Telegram Mini App** с интерактивными графиками TradingView в реальном времени.\n\n"
@@ -94,6 +100,32 @@ async def cmd_start(message: Message, bot: Bot):
         welcome_text,
         reply_markup=get_miniapp_inline_keyboard(),
         parse_mode=ParseMode.MARKDOWN
+    )
+    if message.chat.type == "private":
+        await message.answer(
+            "⌨️ Быстрое меню терминала активно внизу экрана.",
+            reply_markup=get_miniapp_reply_keyboard()
+        )
+
+
+@router.message(Command("guide"))
+@router.message(F.text == "📖 Как пользоваться аналитикой CME")
+async def cmd_cme_guide(message: Message):
+    await message.answer(
+        format_cme_guide_message(),
+        reply_markup=get_miniapp_reply_keyboard() if message.chat.type == "private" else None,
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
+    )
+
+
+@router.callback_query(F.data == "open_cme_guide")
+async def cb_open_cme_guide(query: CallbackQuery):
+    await query.answer()
+    await query.message.answer(
+        format_cme_guide_message(),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
     )
 
 

@@ -23,6 +23,12 @@ def get_share_url(text: str = "", url: str = "") -> str:
     return f"https://t.me/share/url?url={quote_plus(target_url)}&text={quote_plus(share_text)}"
 
 
+def get_guide_url() -> str:
+    """Builds deep-link URL to open the CME analytics beginner guide inside the bot."""
+    bot_name = getattr(config, "BOT_USERNAME", "cme_daily_info_bot")
+    return f"https://t.me/{bot_name}?start=guide"
+
+
 def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
     """Returns persistent Telegram Reply Keyboard with Mini App and QuikStrike buttons."""
     return ReplyKeyboardMarkup(
@@ -38,6 +44,9 @@ def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📊 Котировки"),
             ],
             [
+                KeyboardButton(text="📖 Как пользоваться аналитикой CME"),
+            ],
+            [
                 KeyboardButton(text="📢 Отправить Топ-5 в канал"),
                 KeyboardButton(text="ℹ️ О терминале"),
             ]
@@ -47,7 +56,7 @@ def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
 
 
 def get_miniapp_inline_keyboard() -> InlineKeyboardMarkup:
-    """Returns Inline Keyboard to launch Mini App with live charts, share, and channel actions."""
+    """Returns Inline Keyboard to launch Mini App with live charts, share, guide, and channel actions."""
     share_text = "📈 Онлайн-терминал CME Group: котировки металлов, валют и опционы QuikStrike в реальном времени"
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -55,6 +64,12 @@ def get_miniapp_inline_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="🚀 Запустить CME Mini App (Графики Live)",
                     web_app=WebAppInfo(url=config.WEBAPP_URL)
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📖 Как пользоваться аналитикой CME",
+                    callback_data="open_cme_guide"
                 )
             ],
             [
@@ -89,6 +104,12 @@ def get_oi_inline_keyboard(symbol: str = "GC") -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text="📖 Как пользоваться аналитикой CME",
+                    callback_data="open_cme_guide"
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text="🔄 Обновить данные",
                     callback_data=f"refresh_oi_data:{symbol.upper()}"
                 ),
@@ -110,6 +131,12 @@ def get_channel_inline_keyboard(share_text: str = "", share_url: str = "") -> In
                 InlineKeyboardButton(
                     text="🚀 Открыть QuikStrike Терминал (Mini App)",
                     url=config.WEBAPP_URL
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📖 Как пользоваться аналитикой CME",
+                    url=get_guide_url()
                 )
             ],
             [

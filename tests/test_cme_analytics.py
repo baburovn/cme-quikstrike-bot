@@ -8,7 +8,7 @@ backend_path = Path(__file__).resolve().parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from cme_analytics import analyze_quikstrike_options, format_analytics_footnote
+from cme_analytics import analyze_quikstrike_options, format_analytics_footnote, format_cme_guide_message
 from cme_fetcher import format_channel_report_message, format_quikstrike_telegram_message
 
 
@@ -76,6 +76,16 @@ class TestCMEAnalytics(unittest.TestCase):
         self.assertIn("Поддержка", msg)
         self.assertIn("Сопротивление", msg)
         self.assertIn("Детальный анализ у нас в канале, ссылка в шапке профиля", msg)
+
+    def test_cme_guide_message_without_sentiment(self):
+        guide = format_cme_guide_message()
+        self.assertIn("CALL и", guide)
+        self.assertIn("Open Interest", guide)
+        self.assertIn("Поддержка", guide)
+        self.assertIn("Сопротивление", guide)
+        self.assertIn("Смарт-мани", guide)
+        self.assertNotIn("Сентимент", guide)
+        self.assertNotIn("PCR", guide)
 
 
 if __name__ == "__main__":

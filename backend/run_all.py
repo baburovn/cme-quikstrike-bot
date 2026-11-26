@@ -44,6 +44,7 @@ async def run_bot():
         await bot.set_my_commands([
             BotCommand(command="start", description="🚀 Главное меню и запуск Mini App"),
             BotCommand(command="oi", description="🎯 Most Actives OI (Крупные контракты)"),
+            BotCommand(command="guide", description="📖 Как пользоваться аналитикой CME"),
             BotCommand(command="post", description="📢 Отправить Топ-5 контрактов в канал"),
             BotCommand(command="update_oi", description="🔄 Спарсить свежие данные CME QuikStrike"),
             BotCommand(command="channel", description="📢 Проверить привязанный канал"),
