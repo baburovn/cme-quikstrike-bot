@@ -2,6 +2,42 @@
 """
 CME Core Instruments with full contract specifications and expiration calendars.
 """
+from datetime import datetime, timezone, timedelta
+from typing import List, Dict, Any, Optional
+
+TZ_MSK = timezone(timedelta(hours=3))
+
+
+def compute_dynamic_expirations(
+    expirations: List[Dict[str, Any]],
+    now_msk: Optional[datetime] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Computes dynamic days_left and active flags relative to the current Moscow date.
+    Expired contracts (days_left < 0) are excluded; the nearest upcoming contract is marked active.
+    """
+    today_msk = (now_msk or datetime.now(TZ_MSK)).date()
+    upcoming = []
+    for exp in expirations:
+        item = dict(exp)
+        last_trade = str(item.get("last_trade", "")).strip()
+        try:
+            exp_date = datetime.strptime(last_trade, "%d.%m.%Y").date()
+            days_left = (exp_date - today_msk).days
+        except ValueError:
+            days_left = int(item.get("days_left", 0))
+
+        if days_left < 0:
+            continue
+
+        item["days_left"] = days_left
+        item["active"] = False
+        upcoming.append(item)
+
+    upcoming.sort(key=lambda x: x["days_left"])
+    if upcoming:
+        upcoming[0]["active"] = True
+    return upcoming
 
 CME_PRODUCTS = [
     {
@@ -31,6 +67,9 @@ CME_PRODUCTS = [
             {"code": "GCQ26", "month": "Август 2026", "last_trade": "27.08.2026", "days_left": 147, "active": False},
             {"code": "GCV26", "month": "Октябрь 2026", "last_trade": "28.10.2026", "days_left": 209, "active": False},
             {"code": "GCZ26", "month": "Декабрь 2026", "last_trade": "29.12.2026", "days_left": 271, "active": False},
+            {"code": "GCG27", "month": "Февраль 2027", "last_trade": "24.02.2027", "days_left": 0, "active": False},
+            {"code": "GCJ27", "month": "Апрель 2027", "last_trade": "28.04.2027", "days_left": 0, "active": False},
+            {"code": "GCM27", "month": "Июнь 2027", "last_trade": "28.06.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -59,6 +98,8 @@ CME_PRODUCTS = [
             {"code": "SIN26", "month": "Июль 2026", "last_trade": "29.07.2026", "days_left": 118, "active": False},
             {"code": "SIU26", "month": "Сентябрь 2026", "last_trade": "28.09.2026", "days_left": 179, "active": False},
             {"code": "SIZ26", "month": "Декабрь 2026", "last_trade": "29.12.2026", "days_left": 271, "active": False},
+            {"code": "SIH27", "month": "Март 2027", "last_trade": "29.03.2027", "days_left": 0, "active": False},
+            {"code": "SIK27", "month": "Май 2027", "last_trade": "26.05.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -87,6 +128,8 @@ CME_PRODUCTS = [
             {"code": "HGN26", "month": "Июль 2026", "last_trade": "29.07.2026", "days_left": 118, "active": False},
             {"code": "HGU26", "month": "Сентябрь 2026", "last_trade": "28.09.2026", "days_left": 179, "active": False},
             {"code": "HGZ26", "month": "Декабрь 2026", "last_trade": "29.12.2026", "days_left": 271, "active": False},
+            {"code": "HGH27", "month": "Март 2027", "last_trade": "29.03.2027", "days_left": 0, "active": False},
+            {"code": "HGK27", "month": "Май 2027", "last_trade": "26.05.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -114,6 +157,8 @@ CME_PRODUCTS = [
             {"code": "PLN26", "month": "Июль 2026", "last_trade": "29.07.2026", "days_left": 118, "active": True},
             {"code": "PLV26", "month": "Октябрь 2026", "last_trade": "28.10.2026", "days_left": 209, "active": False},
             {"code": "PLF27", "month": "Январь 2027", "last_trade": "27.01.2027", "days_left": 300, "active": False},
+            {"code": "PLJ27", "month": "Апрель 2027", "last_trade": "28.04.2027", "days_left": 0, "active": False},
+            {"code": "PLN27", "month": "Июль 2027", "last_trade": "28.07.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -141,6 +186,8 @@ CME_PRODUCTS = [
             {"code": "PAM26", "month": "Июнь 2026", "last_trade": "26.06.2026", "days_left": 85, "active": True},
             {"code": "PAU26", "month": "Сентябрь 2026", "last_trade": "28.09.2026", "days_left": 179, "active": False},
             {"code": "PAZ26", "month": "Декабрь 2026", "last_trade": "29.12.2026", "days_left": 271, "active": False},
+            {"code": "PAH27", "month": "Март 2027", "last_trade": "29.03.2027", "days_left": 0, "active": False},
+            {"code": "PAM27", "month": "Июнь 2027", "last_trade": "28.06.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -168,6 +215,8 @@ CME_PRODUCTS = [
             {"code": "6EM26", "month": "Июнь 2026", "last_trade": "15.06.2026", "days_left": 74, "active": True},
             {"code": "6EU26", "month": "Сентябрь 2026", "last_trade": "14.09.2026", "days_left": 165, "active": False},
             {"code": "6EZ26", "month": "Декабрь 2026", "last_trade": "14.12.2026", "days_left": 256, "active": False},
+            {"code": "6EH27", "month": "Март 2027", "last_trade": "15.03.2027", "days_left": 0, "active": False},
+            {"code": "6EM27", "month": "Июнь 2027", "last_trade": "14.06.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -195,6 +244,8 @@ CME_PRODUCTS = [
             {"code": "6BM26", "month": "Июнь 2026", "last_trade": "15.06.2026", "days_left": 74, "active": True},
             {"code": "6BU26", "month": "Сентябрь 2026", "last_trade": "14.09.2026", "days_left": 165, "active": False},
             {"code": "6BZ26", "month": "Декабрь 2026", "last_trade": "14.12.2026", "days_left": 256, "active": False},
+            {"code": "6BH27", "month": "Март 2027", "last_trade": "15.03.2027", "days_left": 0, "active": False},
+            {"code": "6BM27", "month": "Июнь 2027", "last_trade": "14.06.2027", "days_left": 0, "active": False},
         ]
     },
     {
@@ -222,6 +273,8 @@ CME_PRODUCTS = [
             {"code": "6AM26", "month": "Июнь 2026", "last_trade": "15.06.2026", "days_left": 74, "active": True},
             {"code": "6AU26", "month": "Сентябрь 2026", "last_trade": "14.09.2026", "days_left": 165, "active": False},
             {"code": "6AZ26", "month": "Декабрь 2026", "last_trade": "14.12.2026", "days_left": 256, "active": False},
+            {"code": "6AH27", "month": "Март 2027", "last_trade": "15.03.2027", "days_left": 0, "active": False},
+            {"code": "6AM27", "month": "Июнь 2027", "last_trade": "14.06.2027", "days_left": 0, "active": False},
         ]
     },
 ]

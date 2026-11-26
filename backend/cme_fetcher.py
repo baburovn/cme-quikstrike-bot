@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
 import config
-from cme_products import CME_PRODUCTS
+from cme_products import CME_PRODUCTS, compute_dynamic_expirations
 from quikstrike_defaults import QUIKSTRIKE_DATA, QUIKSTRIKE_METADATA
 from cme_analytics import analyze_quikstrike_options, format_analytics_footnote
 
@@ -97,13 +97,24 @@ _init_market_state()
 
 
 def get_all_quotes() -> List[Dict[str, Any]]:
-    """Returns current prices and statistics for all CME products."""
-    return list(_MARKET_STATE.values())
+    """Returns current prices and statistics for all CME products with dynamic MSK expirations."""
+    now_msk = datetime.now(TZ_MSK)
+    quotes = []
+    for q in _MARKET_STATE.values():
+        item = dict(q)
+        item["expirations"] = compute_dynamic_expirations(q.get("expirations", []), now_msk=now_msk)
+        quotes.append(item)
+    return quotes
 
 
 def get_quote_by_symbol(symbol: str) -> Optional[Dict[str, Any]]:
-    """Returns quote data for a single instrument."""
-    return _MARKET_STATE.get(symbol.upper())
+    """Returns quote data for a single instrument with dynamic MSK expirations."""
+    q = _MARKET_STATE.get(symbol.upper())
+    if not q:
+        return None
+    item = dict(q)
+    item["expirations"] = compute_dynamic_expirations(q.get("expirations", []))
+    return item
 
 
 def get_history_by_symbol(symbol: str, limit: int = 100) -> List[Dict[str, Any]]:
@@ -113,7 +124,8 @@ def get_history_by_symbol(symbol: str, limit: int = 100) -> List[Dict[str, Any]]
 
 
 def get_contracts_info() -> List[Dict[str, Any]]:
-    """Returns specs and expiration calendars for all CME products."""
+    """Returns specs and dynamic expiration calendars (Moscow date) for all CME products."""
+    now_msk = datetime.now(TZ_MSK)
     result = []
     for prod in CME_PRODUCTS:
         result.append({
@@ -121,7 +133,7 @@ def get_contracts_info() -> List[Dict[str, Any]]:
             "name": prod["name"],
             "category": prod["category"],
             "specs": prod.get("specs", {}),
-            "expirations": prod.get("expirations", []),
+            "expirations": compute_dynamic_expirations(prod.get("expirations", []), now_msk=now_msk),
         })
     return result
 
@@ -213,6 +225,29 @@ def get_live_quikstrike_dataset() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return QUIKSTRIKE_DATA, QUIKSTRIKE_METADATA
 
 
+def get_quikstrike_cache_status() -> Dict[str, Any]:
+    """Returns metadata about quikstrike_cache.json and current Moscow date/time."""
+    now_msk = datetime.now(TZ_MSK)
+    info = {
+        "msk_date": now_msk.strftime("%d.%m.%Y"),
+        "msk_iso_date": now_msk.strftime("%Y-%m-%d"),
+        "msk_time": now_msk.strftime("%H:%M:%S"),
+        "updated_at": "",
+        "date_key": "",
+        "data_hash": "",
+    }
+    if CACHE_FILE.exists():
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+                info["updated_at"] = payload.get("updated_at", "")
+                info["date_key"] = payload.get("date_key", "")
+                info["data_hash"] = payload.get("data_hash", "")
+        except Exception:
+            pass
+    return info
+
+
 def get_default_min_oi(symbol: str) -> int:
     """Returns default OI threshold: 500 for Silver (SI), 1000 for Gold and FX."""
     return 500 if symbol.upper() == "SI" else 1000
@@ -221,11 +256,15 @@ def get_default_min_oi(symbol: str) -> int:
 def get_quikstrike_most_actives(min_oi: Optional[int] = None, symbol: str = "GC") -> Dict[str, Any]:
     """Filters Top 25 Most Actives by OI threshold. Supports: GC, SI, 6E, 6B, 6A."""
     all_data, all_meta = get_live_quikstrike_dataset()
+    cache_status = get_quikstrike_cache_status()
     sym = symbol.upper()
     if min_oi is None:
         min_oi = get_default_min_oi(sym)
     data = all_data.get(sym, all_data.get("GC", {}))
-    meta = all_meta.get(sym, all_meta.get("GC", {}))
+    meta = dict(all_meta.get(sym, all_meta.get("GC", {})))
+    meta["msk_date"] = cache_status["msk_date"]
+    meta["msk_time"] = cache_status["msk_time"]
+    meta["updated_at"] = cache_status["updated_at"]
     all_calls = data.get("calls", [])
     all_puts = data.get("puts", [])
     calls_filtered = [c for c in all_calls if c["curr_oi"] >= min_oi or c["prev_oi"] >= min_oi]
@@ -268,11 +307,14 @@ def format_quikstrike_telegram_message(min_oi: Optional[int] = None, symbol: str
     curr_d = format_qs_date(meta.get("curr_date", ""))
     inst = meta.get("instrument", symbol)
 
-    weekday = datetime.now(TZ_MSK).weekday()
+    now_msk = datetime.now(TZ_MSK)
+    today_msk_str = now_msk.strftime("%d.%m.%Y")
+    weekday = now_msk.weekday()
     friday_note = " *(Итоги пятницы)*" if weekday in (0, 5, 6) else ""
 
     lines = [
         f"🎯 **CME QUIKSTRIKE: MOST ACTIVES ({inst})**",
+        f"🗓 *Дата (МСК): `{today_msk_str}`*",
         f"📊 *Отбор крупных контрактов: Open Interest ≥ {min_oi:,} контр.*",
         f"📅 Сравнение: `{prev_d}` ➔ `{curr_d}`{friday_note}\n",
         f"🟢 **ТОП CALLS (OI ≥ {min_oi:,}):**",
@@ -360,12 +402,14 @@ def format_channel_report_message() -> str:
 
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
-    weekday = datetime.now(TZ_MSK).weekday()
+    now_msk = datetime.now(TZ_MSK)
+    today_msk_str = now_msk.strftime("%d.%m.%Y")
+    weekday = now_msk.weekday()
     session_label = " *(Итоги сессии пятницы)*" if weekday in (0, 5, 6) else ""
     date_line = f"📅 Срез биржи: `{prev_d}` ➔ `{curr_d}`{session_label}" if (prev_d and curr_d) else ""
 
     lines = [
-        "📊 **CME GROUP — ТОП-5 САМЫХ КРУПНЫХ КОНТРАКТОВ**",
+        f"📊 **CME GROUP — ТОП-5 САМЫХ КРУПНЫХ КОНТРАКТОВ ({today_msk_str})**",
         "🎯 *Открытый интерес (QuikStrike Open Interest Profile)*",
         "⏰ *Ежедневный отчет на 09:30 (МСК)*",
     ]

@@ -1,22 +1,27 @@
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Set, Optional
+from typing import Set, Optional, Dict, Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Header, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 import config
 from cme_fetcher import (
+    CACHE_FILE,
     get_all_quotes,
     get_quote_by_symbol,
     get_history_by_symbol,
     get_contracts_info,
     get_quikstrike_most_actives,
+    get_quikstrike_cache_status,
     start_cme_market_loop,
 )
 
@@ -128,6 +133,36 @@ async def api_get_history(symbol: str, limit: int = 100):
 @app.get("/api/health")
 async def api_health():
     return {"status": "healthy", "service": "cme-metals-miniapp"}
+
+
+@app.get("/api/server-time")
+async def api_server_time():
+    """Returns current Moscow date/time and last QuikStrike cache update timestamp."""
+    return {"status": "ok", **get_quikstrike_cache_status()}
+
+
+@app.post("/api/quikstrike/sync")
+async def api_sync_quikstrike(
+    payload: Dict[str, Any] = Body(...),
+    x_sync_token: str = Header(default="")
+):
+    """Receives updated QuikStrike cache from the scraper node and writes it atomically."""
+    expected = hashlib.sha256(config.BOT_TOKEN.encode("utf-8")).hexdigest() if config.BOT_TOKEN else ""
+    if not expected or not hmac.compare_digest(x_sync_token, expected):
+        raise HTTPException(status_code=403, detail="Invalid sync token")
+    if "data" not in payload or "metadata" not in payload:
+        raise HTTPException(status_code=400, detail="Invalid cache payload")
+
+    try:
+        tmp_cache = CACHE_FILE.with_suffix(".json.tmp")
+        with open(tmp_cache, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_cache, CACHE_FILE)
+        logger.info(f"Synced QuikStrike cache via API (updated_at={payload.get('updated_at')})")
+        return {"status": "ok", "updated_at": payload.get("updated_at", "")}
+    except Exception as e:
+        logger.error(f"Failed to write synced cache: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save cache")
 
 
 # WebSocket live stream

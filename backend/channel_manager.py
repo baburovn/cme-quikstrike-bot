@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -7,12 +8,13 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
+import requests
 from aiogram import Bot
 from aiogram.enums import ParseMode
 
 import config
 from bot_keyboards import get_channel_inline_keyboard
-from cme_fetcher import format_channel_report_message
+from cme_fetcher import CACHE_FILE, format_channel_report_message
 
 logger = logging.getLogger("cme-channel-manager")
 
@@ -69,6 +71,39 @@ def save_channel_config(
     return cfg
 
 
+async def sync_cache_to_webapp() -> bool:
+    """
+    Pushes quikstrike_cache.json to WEBAPP_URL/api/quikstrike/sync when data updates,
+    keeping external website (e.g. bbrv.ru) synchronized with the bot server.
+    """
+    webapp_url = (config.WEBAPP_URL or "").rstrip("/")
+    if not webapp_url.startswith("http") or not CACHE_FILE.exists() or not config.BOT_TOKEN:
+        return False
+
+    try:
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        token = hashlib.sha256(config.BOT_TOKEN.encode("utf-8")).hexdigest()
+
+        def _post():
+            return requests.post(
+                f"{webapp_url}/api/quikstrike/sync",
+                json=payload,
+                headers={"X-Sync-Token": token},
+                timeout=10,
+            )
+
+        resp = await asyncio.to_thread(_post)
+        if resp.status_code == 200:
+            logger.info(f"Synced updated QuikStrike cache to {webapp_url}")
+            return True
+        logger.warning(f"WebApp sync returned HTTP {resp.status_code} from {webapp_url}")
+        return False
+    except Exception as e:
+        logger.warning(f"Could not sync cache to {webapp_url}: {e}")
+        return False
+
+
 async def trigger_cme_scraper() -> Tuple[bool, str]:
     """
     Executes cme_scraper.py under xvfb-run to update quikstrike_cache.json with fresh CME data.
@@ -108,6 +143,7 @@ async def trigger_cme_scraper() -> Tuple[bool, str]:
                 cfg = get_channel_config()
                 save_channel_config(channel_id=cfg.get("channel_id", 0), last_scrape_date=today_str)
                 logger.info(f"CME scraper completed successfully: {out_str}")
+                await sync_cache_to_webapp()
                 return True, "✅ Свежие данные QuikStrike успешно собраны и обновлены!"
             else:
                 logger.error(f"CME scraper failed (code {proc.returncode}): {err_str or out_str}")
@@ -168,10 +204,14 @@ async def start_channel_scheduler(bot: Bot):
     and posted on Monday morning at 09:30 MSK.
     """
     logger.info("Channel scheduler started (Weekdays: Scrape 09:15 MSK, Post 09:30 MSK; Saturday: Scrape 10:00 MSK).")
+    last_msk_date = datetime.now(TZ_MSK).strftime("%Y-%m-%d")
     while True:
         try:
             now_msk = datetime.now(TZ_MSK)
             today_str = now_msk.strftime("%Y-%m-%d")
+            if today_str != last_msk_date:
+                logger.info(f"Наступили новые сутки по МСК: {today_str} (обновление динамических дат)")
+                last_msk_date = today_str
             weekday = now_msk.weekday()  # 0=Monday ... 4=Friday, 5=Saturday, 6=Sunday
 
             # Saturday scraper (weekday == 5) at 10:00 MSK to capture Friday's final CME settlement for the weekend

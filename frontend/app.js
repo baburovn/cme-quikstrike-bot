@@ -271,12 +271,44 @@ function formatCompact(val) {
   return Number(val || 0).toLocaleString("en-US");
 }
 
-// CME Market Clock
+// CME Moscow Date & Market Clock (auto-rolls over at 00:00 MSK)
+let lastMskDateStr = "";
+
+function getMoscowDateParts() {
+  const now = new Date();
+  const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const timeFormatter = new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  return {
+    dateStr: dateFormatter.format(now),
+    timeStr: timeFormatter.format(now),
+  };
+}
+
 function updateClock() {
   const clockEl = document.getElementById("cmeClock");
+  const { dateStr, timeStr } = getMoscowDateParts();
   if (clockEl) {
-    const now = new Date();
-    clockEl.textContent = now.toLocaleTimeString("ru-RU", { hour12: false }) + " UTC";
+    clockEl.textContent = `${dateStr} • ${timeStr} МСК`;
+  }
+  if (lastMskDateStr && lastMskDateStr !== dateStr) {
+    lastMskDateStr = dateStr;
+    if (typeof fetchInitialData === "function") fetchInitialData();
+    if (typeof renderQuikstrikeTables === "function") {
+      renderQuikstrikeTables(currentMinOi, currentQsSymbol);
+    }
+  } else if (!lastMskDateStr) {
+    lastMskDateStr = dateStr;
   }
 }
 setInterval(updateClock, 1000);
@@ -461,13 +493,34 @@ function renderSpecs(symbol) {
   `;
 }
 
+function computeDynamicExpirations(expirations) {
+  const { dateStr } = getMoscowDateParts();
+  const [dd, mm, yyyy] = dateStr.split(".").map(Number);
+  const todayUtc = Date.UTC(yyyy, mm - 1, dd);
+
+  const upcoming = (expirations || [])
+    .map(exp => {
+      const parts = String(exp.last_trade || "").split(".").map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return null;
+      const expUtc = Date.UTC(parts[2], parts[1] - 1, parts[0]);
+      const daysLeft = Math.round((expUtc - todayUtc) / 86400000);
+      if (daysLeft < 0) return null;
+      return { ...exp, days_left: daysLeft, active: false };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.days_left - b.days_left);
+
+  if (upcoming.length > 0) upcoming[0].active = true;
+  return upcoming;
+}
+
 // Render Expiration Calendar View
 function renderCalendar(symbol) {
   const container = document.getElementById("calendarList");
   if (!container) return;
 
   const quote = quotesData.find(q => q.symbol === symbol) || INITIAL_DATA.find(q => q.symbol === symbol);
-  const expirations = quote?.expirations || [];
+  const expirations = computeDynamicExpirations(quote?.expirations || []);
 
   if (expirations.length === 0) {
     container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Календарь обновляется...</div>`;
@@ -1000,5 +1053,10 @@ window.addEventListener("DOMContentLoaded", () => {
     // Load QuikStrike as default page
     renderQuikstrikeTables(1000, currentQsSymbol);
   }
+
+  // Periodically check for updated QuikStrike data (every 60s)
+  setInterval(() => {
+    renderQuikstrikeTables(currentMinOi, currentQsSymbol);
+  }, 60000);
 });
 

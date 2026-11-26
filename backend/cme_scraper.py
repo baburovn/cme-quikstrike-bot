@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -236,22 +237,31 @@ async def run_scraper() -> Tuple[bool, str]:
     # Preserve any previously cached instruments if a single product failed in this run
     merged_meta = {}
     merged_data = {}
+    old_hash = ""
     if CACHE_FILE.exists():
         try:
             with open(CACHE_FILE, "r", encoding="utf-8") as f:
                 old_payload = json.load(f)
                 merged_meta.update(old_payload.get("metadata", {}))
                 merged_data.update(old_payload.get("data", {}))
+                old_hash = old_payload.get("data_hash", "")
         except Exception as e:
             logger.warning(f"Could not read previous cache for merge: {e}")
 
     merged_meta.update(scraped_meta)
     merged_data.update(scraped_data)
 
+    new_hash = hashlib.sha256(
+        json.dumps({"metadata": merged_meta, "data": merged_data}, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    data_changed = (new_hash != old_hash)
+
     # Save to cache file
     cache_payload = {
         "updated_at": datetime.now(TZ_MSK).strftime("%Y-%m-%d %H:%M:%S (МСК)"),
         "date_key": datetime.now(TZ_MSK).strftime("%Y-%m-%d"),
+        "data_hash": new_hash,
+        "data_changed": data_changed,
         "metadata": merged_meta,
         "data": merged_data
     }
@@ -261,8 +271,9 @@ async def run_scraper() -> Tuple[bool, str]:
         with open(tmp_cache, "w", encoding="utf-8") as f:
             json.dump(cache_payload, f, ensure_ascii=False, indent=2)
         os.replace(tmp_cache, CACHE_FILE)
-        logger.info(f"Successfully saved scraped data to {CACHE_FILE}")
-        return True, f"Успешно спарсены данные по {len(scraped_data)} инструментам!"
+        change_label = "обновлены (новые данные)" if data_changed else "без изменений"
+        logger.info(f"Successfully saved scraped data to {CACHE_FILE} ({change_label})")
+        return True, f"Успешно спарсены данные по {len(scraped_data)} инструментам ({change_label})!"
     except Exception as e:
         msg = f"Error saving cache: {e}"
         logger.error(msg)

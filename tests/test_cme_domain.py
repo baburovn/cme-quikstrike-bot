@@ -63,6 +63,27 @@ class TestCMEDomain(unittest.TestCase):
         self.assertNotIn("12:30", report)
         self.assertNotIn("Актуальные котировки рынка CME", report)
 
+    def test_dynamic_expirations_midnight_msk_rollover(self):
+        from datetime import datetime
+        from cme_products import compute_dynamic_expirations, TZ_MSK
+
+        sample = [
+            {"code": "OLD", "month": "Окт 2026", "last_trade": "28.10.2026", "days_left": 99, "active": True},
+            {"code": "CURR", "month": "Дек 2026", "last_trade": "29.12.2026", "days_left": 99, "active": False},
+            {"code": "NEXT", "month": "Фев 2027", "last_trade": "24.02.2027", "days_left": 99, "active": False},
+        ]
+        day1 = datetime(2026, 11, 26, 23, 59, 0, tzinfo=TZ_MSK)
+        day2 = datetime(2026, 11, 27, 0, 0, 1, tzinfo=TZ_MSK)
+
+        res1 = compute_dynamic_expirations(sample, now_msk=day1)
+        res2 = compute_dynamic_expirations(sample, now_msk=day2)
+
+        self.assertEqual([x["code"] for x in res1], ["CURR", "NEXT"])
+        self.assertTrue(res1[0]["active"])
+        self.assertFalse(res1[1]["active"])
+        self.assertEqual(res1[0]["days_left"], 33)
+        self.assertEqual(res2[0]["days_left"], 32)
+
 
 if __name__ == "__main__":
     unittest.main()
