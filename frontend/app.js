@@ -839,15 +839,12 @@ function switchMainPage(page) {
   if (activeTab) activeTab.classList.add("active");
 
   document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
-  if (page === "futures") {
-    document.getElementById("pageFutures").classList.add("active");
-    if (chart) {
-      const container = document.getElementById("chartContainer");
-      chart.applyOptions({ width: container.clientWidth, height: 240 });
-      chart.timeScale().fitContent();
-    }
-  } else if (page === "quikstrike") {
-    document.getElementById("pageQuikstrike").classList.add("active");
+  if (page === "glossary") {
+    const glossaryEl = document.getElementById("pageGlossary");
+    if (glossaryEl) glossaryEl.classList.add("active");
+  } else {
+    const qsEl = document.getElementById("pageQuikstrike");
+    if (qsEl) qsEl.classList.add("active");
     renderQuikstrikeTables(currentMinOi, currentQsSymbol);
   }
 }
@@ -1047,8 +1044,8 @@ window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
 
   // Default: open QuikStrike tab
-  if (window.location.hash === "#futures") {
-    switchMainPage("futures");
+  if (window.location.hash === "#glossary") {
+    switchMainPage("glossary");
   } else {
     // Load QuikStrike as default page
     renderQuikstrikeTables(1000, currentQsSymbol);

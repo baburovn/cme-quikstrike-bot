@@ -994,3 +994,137 @@ body {
   text-align: center;
   margin-top: 14px;
 }
+
+/* Beginner Glossary Section */
+.glossary-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.glossary-hero {
+  margin-bottom: 14px;
+}
+
+.glossary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .glossary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.glossary-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.glossary-card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.glossary-card p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.glossary-card b {
+  color: var(--text-primary);
+}
+
+.glossary-card code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--accent-gold);
+}
+
+.glossary-card .pos {
+  color: var(--color-green);
+  font-weight: 700;
+}
+
+.glossary-card .neg {
+  color: var(--color-red);
+  font-weight: 700;
+}
+
+.glossary-card-head {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.glossary-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.glossary-badge.gold {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--accent-gold);
+}
+
+.glossary-badge.call {
+  background: rgba(16, 185, 129, 0.14);
+  color: var(--color-green);
+}
+
+.glossary-badge.put {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--color-red);
+}
+
+.glossary-badge.neutral {
+  background: rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+}
+
+.glossary-steps {
+  margin-top: 14px;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.glossary-steps h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+}
+
+.glossary-steps ol {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.glossary-steps li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.glossary-steps li b {
+  color: var(--text-primary);
+}
