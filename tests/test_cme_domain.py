@@ -84,6 +84,25 @@ class TestCMEDomain(unittest.TestCase):
         self.assertEqual(res1[0]["days_left"], 33)
         self.assertEqual(res2[0]["days_left"], 32)
 
+    def test_scheduled_scrape_window_0730_to_1030_msk(self):
+        from datetime import datetime
+        from unittest.mock import MagicMock
+        import sys
+        # Ensure aiogram is mocked if running locally without aiogram
+        if "aiogram" not in sys.modules:
+            sys.modules["aiogram"] = MagicMock()
+            sys.modules["aiogram.enums"] = MagicMock()
+        from channel_manager import is_scheduled_scrape_slot, TZ_MSK
+
+        # Friday 2026-11-27
+        self.assertTrue(is_scheduled_scrape_slot(datetime(2026, 11, 27, 7, 30, tzinfo=TZ_MSK)))
+        self.assertTrue(is_scheduled_scrape_slot(datetime(2026, 11, 27, 9, 15, tzinfo=TZ_MSK)))
+        self.assertTrue(is_scheduled_scrape_slot(datetime(2026, 11, 27, 10, 30, tzinfo=TZ_MSK)))
+        self.assertFalse(is_scheduled_scrape_slot(datetime(2026, 11, 27, 7, 0, tzinfo=TZ_MSK)))
+        self.assertFalse(is_scheduled_scrape_slot(datetime(2026, 11, 27, 11, 0, tzinfo=TZ_MSK)))
+        # Sunday 2026-11-29 (closed)
+        self.assertFalse(is_scheduled_scrape_slot(datetime(2026, 11, 29, 7, 30, tzinfo=TZ_MSK)))
+
 
 if __name__ == "__main__":
     unittest.main()

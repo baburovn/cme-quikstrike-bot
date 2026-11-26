@@ -193,18 +193,40 @@ async def send_report_to_channel(bot: Bot) -> Tuple[bool, str]:
         return False, f"❌ Ошибка отправки в канал ({channel_id}): {e}"
 
 
+WEEKDAY_SCRAPE_SLOTS = (
+    (7, 30),
+    (8, 0),
+    (8, 30),
+    (9, 0),
+    (9, 15),
+    (10, 0),
+    (10, 30),
+)
+SATURDAY_SCRAPE_SLOTS = ((7, 30), (10, 0))
+
+
+def is_scheduled_scrape_slot(now_msk: datetime) -> bool:
+    """Returns True if now_msk matches a scheduled CME data check slot (07:30 - 10:30 MSK)."""
+    hm = (now_msk.hour, now_msk.minute)
+    weekday = now_msk.weekday()
+    if weekday == 5:
+        return hm in SATURDAY_SCRAPE_SLOTS
+    if weekday < 5:
+        return hm in WEEKDAY_SCRAPE_SLOTS
+    return False
+
+
 async def start_channel_scheduler(bot: Bot):
     """
     Background scheduler loop:
     Runs Monday through Friday for channel reports.
-    Scrapes fresh CME data at 09:15 MSK and posts daily report at 09:30 MSK.
-    On weekends (Saturday & Sunday), the exchange is closed.
-    Friday's final data is scraped on Saturday morning (10:00 MSK) and Monday morning (09:15 MSK)
-    so that Friday's data is immediately available over the weekend in the Mini App,
-    and posted on Monday morning at 09:30 MSK.
+    Checks & refreshes CME data across the 07:30 - 10:30 MSK morning window
+    (07:30, 08:00, 08:30, 09:00, 09:15, 10:00, 10:30 MSK) and posts daily report at 09:30 MSK.
+    On Saturday, checks at 07:30 and 10:00 MSK to capture Friday's final settlement for the weekend.
     """
-    logger.info("Channel scheduler started (Weekdays: Scrape 09:15 MSK, Post 09:30 MSK; Saturday: Scrape 10:00 MSK).")
+    logger.info("Channel scheduler started (Weekdays: Scrape 07:30-10:30 MSK, Post 09:30 MSK; Saturday: 07:30 & 10:00 MSK).")
     last_msk_date = datetime.now(TZ_MSK).strftime("%Y-%m-%d")
+    last_scrape_slot = ""
     while True:
         try:
             now_msk = datetime.now(TZ_MSK)
@@ -214,29 +236,20 @@ async def start_channel_scheduler(bot: Bot):
                 last_msk_date = today_str
             weekday = now_msk.weekday()  # 0=Monday ... 4=Friday, 5=Saturday, 6=Sunday
 
-            # Saturday scraper (weekday == 5) at 10:00 MSK to capture Friday's final CME settlement for the weekend
-            if weekday == 5 and now_msk.hour == 10 and now_msk.minute == 0:
-                cfg = get_channel_config()
-                if cfg.get("last_scrape_date") != today_str:
-                    logger.info("Triggering Saturday 10:00 MSK scraper to capture Friday's final CME data...")
-                    await trigger_cme_scraper()
-                    await asyncio.sleep(65)
-                    continue
+            # 1. Scheduled CME data refresh window: 07:30 - 10:30 MSK (Weekdays + Saturday morning)
+            slot_key = f"{today_str} {now_msk.hour:02d}:{now_msk.minute:02d}"
+            if is_scheduled_scrape_slot(now_msk) and last_scrape_slot != slot_key:
+                last_scrape_slot = slot_key
+                day_name = "суббота (итоги пятницы)" if weekday == 5 else ("понедельник (срез за пятницу)" if weekday == 0 else f"день {today_str}")
+                logger.info(f"Triggering scheduled {now_msk.hour:02d}:{now_msk.minute:02d} MSK CME scraper for {day_name}...")
+                await trigger_cme_scraper()
+                await asyncio.sleep(65)
+                continue
 
             # On weekends, do not post reports to channel (exchange is closed)
             if weekday >= 5:
                 await asyncio.sleep(25)
                 continue
-
-            # 1. Automatic scraping on weekdays (Monday-Friday) at 09:15 MSK (with retries at 09:20 and 09:25 if needed)
-            if now_msk.hour == 9 and now_msk.minute in (15, 20, 25):
-                cfg = get_channel_config()
-                if cfg.get("last_scrape_date") != today_str:
-                    day_name = "понедельник (срез за пятницу)" if weekday == 0 else f"день {today_str}"
-                    logger.info(f"Triggering scheduled 09:{now_msk.minute:02d} MSK CME scraper for {day_name}...")
-                    await trigger_cme_scraper()
-                    await asyncio.sleep(65)
-                    continue
 
             # 2. Daily channel report at 09:30 MSK (Monday-Friday)
             if now_msk.hour == 9 and now_msk.minute == 30:
