@@ -82,7 +82,7 @@ def format_text_quotes() -> str:
 @router.message(Command("start"))
 async def cmd_start(message: Message, bot: Bot):
     parts = (message.text or "").split(maxsplit=1)
-    if len(parts) > 1 and parts[1].strip().lower() == "guide":
+    if len(parts) > 1 and parts[1].strip().lower() in ("guide", "terms"):
         await cmd_cme_guide(message)
         return
 
@@ -109,7 +109,8 @@ async def cmd_start(message: Message, bot: Bot):
 
 
 @router.message(Command("guide"))
-@router.message(F.text == "📖 Как пользоваться аналитикой CME")
+@router.message(Command("terms"))
+@router.message(F.text.in_({"📖 Пояснение терминов", "📖 Как пользоваться аналитикой CME"}))
 async def cmd_cme_guide(message: Message):
     await message.answer(
         format_cme_guide_message(),

@@ -44,7 +44,7 @@ def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📊 Котировки"),
             ],
             [
-                KeyboardButton(text="📖 Как пользоваться аналитикой CME"),
+                KeyboardButton(text="📖 Пояснение терминов"),
             ],
             [
                 KeyboardButton(text="📢 Отправить Топ-5 в канал"),
@@ -68,7 +68,7 @@ def get_miniapp_inline_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="📖 Как пользоваться аналитикой CME",
+                    text="📖 Пояснение терминов",
                     callback_data="open_cme_guide"
                 )
             ],
@@ -104,7 +104,7 @@ def get_oi_inline_keyboard(symbol: str = "GC") -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="📖 Как пользоваться аналитикой CME",
+                    text="📖 Пояснение терминов",
                     callback_data="open_cme_guide"
                 )
             ],
@@ -135,7 +135,7 @@ def get_channel_inline_keyboard(share_text: str = "", share_url: str = "") -> In
             ],
             [
                 InlineKeyboardButton(
-                    text="📖 Как пользоваться аналитикой CME",
+                    text="📖 Пояснение терминов",
                     url=get_guide_url()
                 )
             ],

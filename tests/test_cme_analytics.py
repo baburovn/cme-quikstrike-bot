@@ -79,8 +79,13 @@ class TestCMEAnalytics(unittest.TestCase):
 
     def test_cme_guide_message_without_sentiment(self):
         guide = format_cme_guide_message()
-        self.assertIn("CALL и", guide)
-        self.assertIn("Open Interest", guide)
+        self.assertIn("CME Group", guide)
+        self.assertIn("STRIKE", guide)
+        self.assertIn("EXP", guide)
+        self.assertIn("VOL", guide)
+        self.assertIn("ITM", guide)
+        self.assertIn("OTM", guide)
+        self.assertIn("Открытый интерес", guide)
         self.assertIn("Поддержка", guide)
         self.assertIn("Сопротивление", guide)
         self.assertIn("Смарт-мани", guide)

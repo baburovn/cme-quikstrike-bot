@@ -76,12 +76,12 @@ class TestBotKeyboards(unittest.TestCase):
             for row in reply_kb.keyboard
             for btn in row
         ]
-        self.assertIn("📖 Как пользоваться аналитикой CME", reply_texts)
+        self.assertIn("📖 Пояснение терминов", reply_texts)
 
         for kb in (miniapp_kb, oi_kb, ch_kb):
             guide_btns = [
                 btn for row in kb.inline_keyboard for btn in row
-                if "Как пользоваться аналитикой CME" in (btn.get("text", "") if isinstance(btn, dict) else getattr(btn, "text", ""))
+                if "Пояснение терминов" in (btn.get("text", "") if isinstance(btn, dict) else getattr(btn, "text", ""))
             ]
             self.assertTrue(len(guide_btns) > 0, "Guide button missing in inline keyboard")
 
