@@ -45,9 +45,6 @@ def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
             ],
             [
                 KeyboardButton(text="📖 Пояснение терминов"),
-            ],
-            [
-                KeyboardButton(text="📢 Отправить Топ-5 в канал"),
                 KeyboardButton(text="ℹ️ О терминале"),
             ]
         ],
@@ -56,7 +53,7 @@ def get_miniapp_reply_keyboard() -> ReplyKeyboardMarkup:
 
 
 def get_miniapp_inline_keyboard() -> InlineKeyboardMarkup:
-    """Returns Inline Keyboard to launch Mini App with live charts, share, guide, and channel actions."""
+    """Returns Inline Keyboard to launch Mini App with live charts, share, and guide actions."""
     share_text = "📈 Онлайн-терминал CME Group: котировки металлов, валют и опционы QuikStrike в реальном времени"
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -76,10 +73,6 @@ def get_miniapp_inline_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="🔄 Обновить",
                     callback_data="refresh_text_quotes"
-                ),
-                InlineKeyboardButton(
-                    text="📢 В канал",
-                    callback_data="publish_to_channel"
                 ),
                 InlineKeyboardButton(
                     text="↗️ Поделиться",

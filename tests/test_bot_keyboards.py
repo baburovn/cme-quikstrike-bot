@@ -77,6 +77,14 @@ class TestBotKeyboards(unittest.TestCase):
             for btn in row
         ]
         self.assertIn("📖 Пояснение терминов", reply_texts)
+        self.assertNotIn("📢 Отправить Топ-5 в канал", reply_texts)
+
+        miniapp_texts = [
+            (btn.get("text", "") if isinstance(btn, dict) else getattr(btn, "text", ""))
+            for row in miniapp_kb.inline_keyboard
+            for btn in row
+        ]
+        self.assertNotIn("📢 В канал", miniapp_texts)
 
         for kb in (miniapp_kb, oi_kb, ch_kb):
             guide_btns = [
