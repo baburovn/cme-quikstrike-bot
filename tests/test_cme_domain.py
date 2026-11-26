@@ -88,9 +88,10 @@ class TestCMEDomain(unittest.TestCase):
         from datetime import datetime
         from unittest.mock import MagicMock
         import sys
-        # Ensure aiogram is mocked if running locally without aiogram
+        # Ensure aiogram and aiogram.enums are mocked if running locally without aiogram
         if "aiogram" not in sys.modules:
             sys.modules["aiogram"] = MagicMock()
+        if "aiogram.enums" not in sys.modules:
             sys.modules["aiogram.enums"] = MagicMock()
         from channel_manager import is_scheduled_scrape_slot, TZ_MSK
 
